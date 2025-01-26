@@ -110,7 +110,14 @@ def show_file_preview(file_path, csv_settings):
     encoding = csv_settings.get("encoding", "utf-8")
 
     try:
-        df = read_file_from_volume(DATABRICKS_VOLUME_PATH, filename, delimiter, escape_char, header)
+        df = read_file_from_volume(
+            DATABRICKS_VOLUME_PATH, 
+            filename, 
+            delimiter=delimiter,
+            escape_char=escape_char,
+            header=header,
+            encoding=encoding
+        )
 
         if not df.empty:
             columns = [{"name": col, "id": col} for col in df.columns]

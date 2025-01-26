@@ -101,7 +101,7 @@ def save_file_to_volume(encoded_content: str, volume_path: str, file_name: str, 
         print(f"Error uploading file to volume: {str(e)}")
         return None
     
-def read_file_from_volume(volume_path: str, file_name: str, delimiter: str = ",", escape_char: str = '"', header: int = 0) -> pd.DataFrame:
+def read_file_from_volume(volume_path: str, file_name: str, delimiter: str = ",", escape_char: str = '"', header: int = 0, encoding: str = "utf-8") -> pd.DataFrame:
     """
     Reads a CSV file from a Databricks volume with custom parsing options.
 
@@ -111,18 +111,33 @@ def read_file_from_volume(volume_path: str, file_name: str, delimiter: str = ","
         delimiter (str): The column delimiter (default `,`).
         escape_char (str): The escape character (default `"`).
         header (int): Row number to use as the column names (default `0` for first row).
+        encoding (str): File encoding (default 'utf-8').
 
     Returns:
         pd.DataFrame: DataFrame containing the file's contents.
     """
     try:
         file_path = f"{volume_path}/{file_name}"
+        
+        # Construct the options string
+        header_option = "true" if header == 0 else "false"
+        
         query = f"""
-        SELECT * FROM csv.`{file_path}` 
-        OPTIONS ('header'='{str(header).lower()}', 'delimiter'='{delimiter}', 'escape'='{escape_char}')
+        SELECT * FROM csv.`{file_path}`
+        OPTIONS (
+            'header' = '{header_option}',
+            'delimiter' = '{delimiter}',
+            'escape' = '{escape_char}',
+            'encoding' = '{encoding}'
+        )
         """
         
         df = sqlQuery(query)
+        
+        # If no header, generate column names
+        if header is None:
+            df.columns = [f"Column_{i+1}" for i in range(len(df.columns))]
+            
         return df
 
     except Exception as e:
