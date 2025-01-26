@@ -129,10 +129,16 @@ def read_file_from_volume(volume_path: str, file_name: str, delimiter: str = ","
         # Handle header based on settings
         if header == 0:  # Use first row as header
             headers = df.iloc[0].values
+            # Convert all headers to strings and clean them
+            headers = [str(h).strip() if h is not None else f"col_{i}" 
+                      for i, h in enumerate(headers)]
             df = df.iloc[1:]  # Remove the header row from data
             df.columns = headers
         else:  # Generate column names
             df.columns = [f"col_{i}" for i in range(len(df.columns))]
+        
+        # Convert all column names to strings to ensure they're serializable
+        df.columns = [str(col) for col in df.columns]
         
         return df
 
