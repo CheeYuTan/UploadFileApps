@@ -108,12 +108,11 @@ def read_file_from_volume(volume_path: str, file_name: str, delimiter: str = ","
     try:
         file_path = f"{volume_path}/{file_name}"
         
-        # Using read_files function with CSV options per documentation
         query = f"""
         SELECT * FROM read_files(
             '{file_path}',
             format => 'csv',
-            header => {str(header).lower()},  # Directly use boolean value
+            header => {str(header).lower()},
             delimiter => '{delimiter}',
             quote => '{quote_char}',
             charset => '{encoding}'
