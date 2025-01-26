@@ -6,7 +6,9 @@ from dbutils import (
     read_file_from_volume, 
     list_catalogs, 
     list_schemas, 
-    list_tables
+    list_tables,
+    describe_table,
+    get_sample_data
 )
 from config import DATABRICKS_VOLUME_PATH
 from components.csv_settings import get_csv_settings_modal
@@ -53,10 +55,21 @@ layout = dbc.Container([
                     dcc.Dropdown(id="table-select", placeholder="Select a table", disabled=True)
                 ], width=4),
             ]),
+            # Add table preview section
+            html.Div([
+                html.H6("Target Table Preview", className="mt-4"),
+                html.Div(id="table-preview-metadata", className="text-muted small mb-2"),
+                dcc.Loading(
+                    id="loading-table-preview",
+                    type="circle",
+                    children=dt.DataTable(id="table-preview", style_table={"width": "100%"})
+                )
+            ], id="table-preview-section", style={"display": "none"}),
         ])
     ]),
 
     html.H5("File Preview", className="fw-bold mt-4"),
+    html.Div(id="file-preview-metadata", className="text-muted small mb-2"),
     dcc.Loading(
         id="loading-preview",
         type="circle",
@@ -122,9 +135,50 @@ def load_tables(catalog, schema):
     return [{"label": table, "value": table} for table in df['tableName'].tolist()], False
 
 @callback(
+    [Output("table-preview", "data"),
+     Output("table-preview", "columns"),
+     Output("table-preview-metadata", "children"),
+     Output("table-preview-section", "style")],
+    [Input("catalog-select", "value"),
+     Input("schema-select", "value"),
+     Input("table-select", "value")]
+)
+def update_table_preview(catalog, schema, table):
+    if not all([catalog, schema, table]):
+        return [], [], "", {"display": "none"}
+    
+    try:
+        # Get table schema and sample data
+        schema_df = describe_table(catalog, schema, table)
+        sample_df = get_sample_data(catalog, schema, table, limit=5)
+        
+        if not sample_df.empty:
+            # Remove _rescued_data column if it exists
+            if '_rescued_data' in sample_df.columns:
+                sample_df = sample_df.drop('_rescued_data', axis=1)
+            
+            columns = [{"name": col, "id": col} for col in sample_df.columns]
+            data = sample_df.to_dict("records")
+            
+            # Create metadata string with schema info
+            metadata = f"Showing 5 rows, {len(sample_df.columns)} columns. "
+            metadata += "Data types: " + ", ".join([
+                f"{row['col_name']}: {row['data_type']}"
+                for _, row in schema_df.iterrows()
+                if row['col_name'] != '_rescued_data'
+            ])
+            
+            return data, columns, metadata, {"display": "block"}
+    except Exception as e:
+        print(f"Error loading table preview: {str(e)}")
+    
+    return [], [], "", {"display": "none"}
+
+@callback(
     [Output("file-preview", "data"),
      Output("file-preview", "columns"),
-     Output("file-info", "children")],
+     Output("file-info", "children"),
+     Output("file-preview-metadata", "children")],
     [Input("file-path", "data"),
      Input("column-delimiter", "value"),
      Input("quote-character", "value"),
@@ -135,7 +189,7 @@ def load_tables(catalog, schema):
 )
 def show_file_preview(file_path, delimiter, quote_char, escape_char, header, encoding):
     if not file_path:
-        return [], [], "No file available for preview."
+        return [], [], "No file available for preview.", ""
 
     csv_settings = {
         "delimiter": delimiter or ",",
@@ -158,10 +212,16 @@ def show_file_preview(file_path, delimiter, quote_char, escape_char, header, enc
         )
 
         if not df.empty:
+            # Remove _rescued_data column if it exists
+            if '_rescued_data' in df.columns:
+                df = df.drop('_rescued_data', axis=1)
+            
             columns = [{"name": col, "id": col} for col in df.columns]
             data = df.to_dict("records")
-            return data, columns, f"File retrieved: {filename}"
+            preview_metadata = f"Showing {len(data)} rows, {len(df.columns)} columns"
+            
+            return data, columns, f"File retrieved: {filename}", preview_metadata
         else:
-            return [], [], "File not found or error processing file."
+            return [], [], "File not found or error processing file.", ""
     except Exception as e:
-        return [], [], f"Error processing file: {str(e)}"
+        return [], [], f"Error processing file: {str(e)}", ""
