@@ -4,6 +4,7 @@ import dash.dash_table as dt
 from dash import html, dcc, callback, Input, Output, State
 from dbutils import read_file_from_volume
 from config import DATABRICKS_VOLUME_PATH
+from components.csv_settings import get_csv_settings_modal
 
 dash.register_page(__name__, path="/append-table")
 
@@ -38,42 +39,7 @@ layout = dbc.Container([
 
     dbc.Button("Advanced Attributes", id="advanced-attributes-btn", color="primary", className="mt-3"),
 
-    dbc.Modal([
-        dbc.ModalHeader("Advanced Attributes"),
-        dbc.ModalBody([
-            dbc.Label("Column delimiter"),
-            dcc.Dropdown(
-                id="column-delimiter",
-                options=[
-                    { "label": "Comma (,)", "value": "," },
-                    { "label": "Semicolon (;)", "value": ";" },
-                    { "label": "Pipe (|)", "value": "|" }
-                ],
-                value=",",
-                clearable=False
-            ),
-
-            dbc.Label("Escape character"),
-            dcc.Dropdown(
-                id="escape-character",
-                options=[
-                    { "label": 'Double Quote (")', "value": '"' },
-                    { "label": "Single Quote (')", "value": "'" }
-                ],
-                value='"',
-                clearable=False
-            ),
-
-            dbc.Checkbox(
-                id="first-row-header",
-                label="First row contains header",
-                value=True
-            ),
-        ]),
-        dbc.ModalFooter(
-            dbc.Button("Save", id="save-advanced-attributes", color="success", className="ms-auto")
-        )
-    ], id="advanced-attributes-modal", is_open=False),
+    get_csv_settings_modal(),
 
     dbc.Button("Confirm and Append Data", id="confirm-append", color="success", className="mt-3"),
 
@@ -121,6 +87,14 @@ def save_csv_settings(n_clicks, delimiter, escape_char, header):
 def show_file_preview(file_path, csv_settings):
     if not file_path:
         return [], [], "No file available for preview."
+
+    # Initialize default settings if csv_settings is None
+    if csv_settings is None:
+        csv_settings = {
+            "delimiter": ",",
+            "escape_char": '"',
+            "header": 0
+        }
 
     filename = file_path.split("/")[-1]
     delimiter = csv_settings.get("delimiter", ",")
