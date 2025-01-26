@@ -83,7 +83,7 @@ def show_file_preview(file_path, delimiter, quote_char, escape_char, header, enc
         "delimiter": delimiter or ",",
         "quote_char": quote_char or '"',
         "escape_char": escape_char or '"',
-        "header": header if header is not None else 0,
+        "header": header if header is not None else True,
         "encoding": encoding or "utf-8"
     }
 
@@ -93,7 +93,7 @@ def show_file_preview(file_path, delimiter, quote_char, escape_char, header, enc
             DATABRICKS_VOLUME_PATH, 
             filename, 
             delimiter=csv_settings["delimiter"],
-            escape_char=csv_settings["escape_char"],
+            quote_char=csv_settings["quote_char"],
             header=csv_settings["header"],
             encoding=csv_settings["encoding"],
             limit=10

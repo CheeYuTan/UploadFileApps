@@ -54,10 +54,10 @@ def get_csv_settings_modal():
             dbc.RadioItems(
                 id="header-settings",
                 options=[
-                    {"label": "First row as header", "value": 0},
-                    {"label": "No header (auto-generate column names)", "value": None}
+                    {"label": "First row as header", "value": True},
+                    {"label": "No header (auto-generate column names)", "value": False}
                 ],
-                value=0,
+                value=True,
                 className="mb-3"
             ),
 

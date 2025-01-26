@@ -101,21 +101,21 @@ def save_file_to_volume(encoded_content: str, volume_path: str, file_name: str, 
         print(f"Error uploading file to volume: {str(e)}")
         return None
     
-def read_file_from_volume(volume_path: str, file_name: str, delimiter: str = ",", escape_char: str = '"', header: int = 0, encoding: str = "utf-8", limit: int = 10) -> pd.DataFrame:
+def read_file_from_volume(volume_path: str, file_name: str, delimiter: str = ",", quote_char: str = '"', header: bool = True, encoding: str = "utf-8", limit: int = 10) -> pd.DataFrame:
     """
     Reads a CSV file from a Databricks volume using read_files function.
     """
     try:
         file_path = f"{volume_path}/{file_name}"
         
-        # Using read_files function with CSV options
+        # Using read_files function with CSV options per documentation
         query = f"""
         SELECT * FROM read_files(
             '{file_path}',
             format => 'csv',
-            header => false,  -- Always read without header
+            header => {str(header).lower()},  # Directly use boolean value
             delimiter => '{delimiter}',
-            escape => '{escape_char}',
+            quote => '{quote_char}',
             charset => '{encoding}'
         )
         LIMIT {limit}
@@ -126,19 +126,12 @@ def read_file_from_volume(volume_path: str, file_name: str, delimiter: str = ","
         if df.empty:
             return df
             
-        # Handle header based on settings
-        if header == 0:  # Use first row as header
-            headers = df.iloc[0].values
-            # Convert all headers to strings and clean them
-            headers = [str(h).strip() if h is not None else f"col_{i}" 
-                      for i, h in enumerate(headers)]
-            df = df.iloc[1:]  # Remove the header row from data
-            df.columns = headers
-        else:  # Generate column names
+        # Generate column names only if no header
+        if not header:
             df.columns = [f"col_{i}" for i in range(len(df.columns))]
         
-        # Convert all column names to strings to ensure they're serializable
-        df.columns = [str(col) for col in df.columns]
+        # Ensure all column names are strings
+        df.columns = [str(col).strip() for col in df.columns]
         
         return df
 
