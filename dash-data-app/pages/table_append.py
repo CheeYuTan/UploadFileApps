@@ -12,11 +12,21 @@ layout = dbc.Container([
 
     dbc.Button("← Back", id="back-button", href="/", color="secondary", outline=True, className="mb-3"),
 
+    # Add loading overlay for the entire process
+    dbc.Spinner(
+        html.Div(id="processing-status", className="mt-3"),
+        color="primary",
+        type="border",
+    ),
+
     # File processing info with spinner
     dcc.Loading(
         id="loading-file-info",
         type="circle",
-        children=html.Div("Processing file...", id="file-info", className="mb-3 fw-bold"),
+        children=html.Div([
+            html.Div(id="file-info", className="mb-3 fw-bold"),
+            html.Div(id="processing-message", className="text-info")
+        ]),
     ),
 
     html.H5("File Preview", className="fw-bold mt-4"),
