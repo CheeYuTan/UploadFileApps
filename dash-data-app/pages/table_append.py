@@ -51,36 +51,18 @@ layout = dbc.Container([
         ])
     ]),
 
-    # File preview section with metadata
-    dbc.Row([
-        dbc.Col([
-            html.H5("File Preview", className="fw-bold mt-4"),
-            html.Div(id="preview-metadata", className="text-muted mb-2"),  # For row/column count
-            dcc.Loading(
-                id="loading-preview",
-                type="circle",
-                children=[
-                    # Data type information
-                    html.Div(id="datatype-info", className="mb-3"),
-                    # Preview table
-                    dt.DataTable(
-                        id="file-preview",
-                        style_table={"width": "100%"},
-                        style_data_conditional=[{
-                            'if': {'filter_query': '{value} = null'},
-                            'backgroundColor': '#FFF3F3',
-                            'color': '#FF0000'
-                        }]
-                    )
-                ]
-            )
-        ])
-    ]),
+    html.H5("File Preview", className="fw-bold mt-4"),
+    dcc.Loading(
+        id="loading-preview",
+        type="circle",
+        children=dt.DataTable(
+            id="file-preview", 
+            style_table={"width": "100%"}
+        )
+    ),
 
     dbc.Button("Advanced Attributes", id="advanced-attributes-btn", color="primary", className="mt-3"),
-
     get_csv_settings_modal(),
-
     dbc.Button("Confirm and Append Data", id="confirm-append", color="success", className="mt-3"),
 
     dcc.Store(id="file-path", storage_type="session"),
@@ -137,9 +119,7 @@ def load_tables(catalog, schema):
 @callback(
     [Output("file-preview", "data"),
      Output("file-preview", "columns"),
-     Output("file-info", "children"),
-     Output("preview-metadata", "children"),
-     Output("datatype-info", "children")],
+     Output("file-info", "children")],
     [Input("file-path", "data"),
      Input("column-delimiter", "value"),
      Input("quote-character", "value"),
@@ -150,7 +130,7 @@ def load_tables(catalog, schema):
 )
 def show_file_preview(file_path, delimiter, quote_char, escape_char, header, encoding):
     if not file_path:
-        return [], [], "No file available for preview.", "", ""
+        return [], [], "No file available for preview."
 
     csv_settings = {
         "delimiter": delimiter or ",",
@@ -173,29 +153,10 @@ def show_file_preview(file_path, delimiter, quote_char, escape_char, header, enc
         )
 
         if not df.empty:
-            # Prepare columns with types
-            columns = [
-                {"name": col, "id": col, 
-                 "type": str(df[col].dtype)} 
-                for col in df.columns
-            ]
-            
-            # Convert data to records
+            columns = [{"name": col, "id": col} for col in df.columns]
             data = df.to_dict("records")
-            
-            # Create metadata string
-            preview_metadata = f"Previewing {len(data)} rows, {len(df.columns)} columns"
-            
-            # Create datatype information
-            datatype_info = html.Table(
-                [html.Tr([html.Th("Column"), html.Th("Type")])] +
-                [html.Tr([html.Td(col), html.Td(str(df[col].dtype))]) 
-                 for col in df.columns],
-                className="table table-sm"
-            )
-            
-            return data, columns, f"File retrieved: {filename}", preview_metadata, datatype_info
+            return data, columns, f"File retrieved: {filename}"
         else:
-            return [], [], "File not found or error processing file.", "", ""
+            return [], [], "File not found or error processing file."
     except Exception as e:
-        return [], [], f"Error processing file: {str(e)}", "", ""
+        return [], [], f"Error processing file: {str(e)}"
