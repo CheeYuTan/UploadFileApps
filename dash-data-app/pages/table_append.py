@@ -157,6 +157,9 @@ def update_table_preview(catalog, schema, table):
             if '_rescued_data' in sample_df.columns:
                 sample_df = sample_df.drop('_rescued_data', axis=1)
             
+            # Convert all values to string to ensure they're displayable
+            sample_df = sample_df.astype(str)
+            
             columns = [{"name": col, "id": col} for col in sample_df.columns]
             data = sample_df.to_dict("records")
             
