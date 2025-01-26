@@ -50,12 +50,15 @@ layout = dbc.Container([
 
 @callback(
     Output("advanced-attributes-modal", "is_open"),
-    Input("advanced-attributes-btn", "n_clicks"),
+    [Input("advanced-attributes-btn", "n_clicks"),
+     Input("close-modal", "n_clicks")],
     [State("advanced-attributes-modal", "is_open")],
     prevent_initial_call=True
 )
-def toggle_advanced_attributes(n_clicks, is_open):
-    return not is_open
+def toggle_advanced_attributes(open_clicks, close_clicks, is_open):
+    if open_clicks or close_clicks:
+        return not is_open
+    return is_open
 
 
 @callback(

@@ -113,7 +113,7 @@ def read_file_from_volume(volume_path: str, file_name: str, delimiter: str = ","
         SELECT * FROM read_files(
             '{file_path}',
             format => 'csv',
-            header => {str(header == 0).lower()},  -- true if header=0, false otherwise
+            header => false,  -- Always read without header
             delimiter => '{delimiter}',
             escape => '{escape_char}',
             charset => '{encoding}'
@@ -123,17 +123,16 @@ def read_file_from_volume(volume_path: str, file_name: str, delimiter: str = ","
         
         df = sqlQuery(query)
         
-        # If no header (header is None), rename columns to Column_1, Column_2, etc.
-        if header is None:
-            # First, check if the first row was read as header (it shouldn't be)
-            if df.shape[0] > 0:  # If we have data
-                # Rename existing columns to Column_1, Column_2, etc.
-                df.columns = [f"Column_{i+1}" for i in range(len(df.columns))]
-                
-                # If the first row contains what was supposed to be header data,
-                # we need to prepend it back to the dataframe
-                first_row = df.iloc[0]
-                df = pd.concat([pd.DataFrame([first_row.values], columns=df.columns), df], ignore_index=True)
+        if df.empty:
+            return df
+            
+        # Handle header based on settings
+        if header == 0:  # Use first row as header
+            headers = df.iloc[0].values
+            df = df.iloc[1:]  # Remove the header row from data
+            df.columns = headers
+        else:  # Generate column names
+            df.columns = [f"col_{i}" for i in range(len(df.columns))]
         
         return df
 
