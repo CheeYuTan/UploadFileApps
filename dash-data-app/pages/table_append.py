@@ -63,16 +63,20 @@ def toggle_advanced_attributes(n_clicks, is_open):
     Input("save-advanced-attributes", "n_clicks"),
     [
         State("column-delimiter", "value"),
+        State("quote-character", "value"),
         State("escape-character", "value"),
-        State("first-row-header", "value")
+        State("header-settings", "value"),
+        State("file-encoding", "value")
     ],
     prevent_initial_call=True
 )
-def save_csv_settings(n_clicks, delimiter, escape_char, header):
+def save_csv_settings(n_clicks, delimiter, quote_char, escape_char, header, encoding):
     return {
         "delimiter": delimiter,
+        "quote_char": quote_char,
         "escape_char": escape_char,
-        "header": 0 if header else None
+        "header": header,
+        "encoding": encoding
     }
 
 
@@ -92,14 +96,18 @@ def show_file_preview(file_path, csv_settings):
     if csv_settings is None:
         csv_settings = {
             "delimiter": ",",
+            "quote_char": '"',
             "escape_char": '"',
-            "header": 0
+            "header": 0,
+            "encoding": "utf-8"
         }
 
     filename = file_path.split("/")[-1]
     delimiter = csv_settings.get("delimiter", ",")
+    quote_char = csv_settings.get("quote_char", '"')
     escape_char = csv_settings.get("escape_char", '"')
     header = csv_settings.get("header", 0)
+    encoding = csv_settings.get("encoding", "utf-8")
 
     try:
         df = read_file_from_volume(DATABRICKS_VOLUME_PATH, filename, delimiter, escape_char, header)
