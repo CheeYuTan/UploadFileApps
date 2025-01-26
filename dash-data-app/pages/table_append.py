@@ -2,7 +2,12 @@ import dash
 import dash_bootstrap_components as dbc
 import dash.dash_table as dt
 from dash import html, dcc, callback, Input, Output, State
-from dbutils import read_file_from_volume
+from dbutils import (
+    read_file_from_volume, 
+    list_catalogs, 
+    list_schemas, 
+    list_tables
+)
 from config import DATABRICKS_VOLUME_PATH
 from components.csv_settings import get_csv_settings_modal
 
