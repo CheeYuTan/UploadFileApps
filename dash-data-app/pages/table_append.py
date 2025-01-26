@@ -116,7 +116,8 @@ def show_file_preview(file_path, csv_settings):
             delimiter=delimiter,
             escape_char=escape_char,
             header=header,
-            encoding=encoding
+            encoding=encoding,
+            limit=10  # Explicitly set limit for preview
         )
 
         if not df.empty:

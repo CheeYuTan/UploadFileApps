@@ -101,20 +101,9 @@ def save_file_to_volume(encoded_content: str, volume_path: str, file_name: str, 
         print(f"Error uploading file to volume: {str(e)}")
         return None
     
-def read_file_from_volume(volume_path: str, file_name: str, delimiter: str = ",", escape_char: str = '"', header: int = 0, encoding: str = "utf-8") -> pd.DataFrame:
+def read_file_from_volume(volume_path: str, file_name: str, delimiter: str = ",", escape_char: str = '"', header: int = 0, encoding: str = "utf-8", limit: int = 10) -> pd.DataFrame:
     """
     Reads a CSV file from a Databricks volume with custom parsing options.
-
-    Args:
-        volume_path (str): The Databricks volume path.
-        file_name (str): The name of the CSV file to read.
-        delimiter (str): The column delimiter (default `,`).
-        escape_char (str): The escape character (default `"`).
-        header (int): Row number to use as the column names (default `0` for first row).
-        encoding (str): File encoding (default 'utf-8').
-
-    Returns:
-        pd.DataFrame: DataFrame containing the file's contents.
     """
     try:
         file_path = f"{volume_path}/{file_name}"
@@ -122,14 +111,17 @@ def read_file_from_volume(volume_path: str, file_name: str, delimiter: str = ","
         # Construct the options string
         header_option = "true" if header == 0 else "false"
         
+        # Using Databricks' correct CSV reading syntax with LIMIT
         query = f"""
-        SELECT * FROM csv.`{file_path}`
+        SELECT * FROM text.`{file_path}`
+        USING CSV
         OPTIONS (
-            'header' = '{header_option}',
-            'delimiter' = '{delimiter}',
-            'escape' = '{escape_char}',
-            'encoding' = '{encoding}'
+            header = {header_option},
+            delimiter = '{delimiter}',
+            escape = '{escape_char}',
+            charset = '{encoding}'
         )
+        LIMIT {limit}
         """
         
         df = sqlQuery(query)
