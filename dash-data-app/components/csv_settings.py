@@ -77,12 +77,12 @@ def get_csv_settings_modal():
             ),
 
             dbc.Alert(
-                "Changes will be applied to the preview immediately",
+                "Changes are applied to the preview automatically",
                 color="info",
                 className="mt-3"
             )
         ]),
         dbc.ModalFooter(
-            dbc.Button("Apply Settings", id="save-advanced-attributes", color="success", className="ms-auto")
+            dbc.Button("Close", id="close-modal", className="ms-auto")
         )
     ], id="advanced-attributes-modal", is_open=False) 

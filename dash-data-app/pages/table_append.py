@@ -59,71 +59,47 @@ def toggle_advanced_attributes(n_clicks, is_open):
 
 
 @callback(
-    Output("csv-settings", "data"),
-    Input("save-advanced-attributes", "n_clicks"),
-    [
-        State("column-delimiter", "value"),
-        State("quote-character", "value"),
-        State("escape-character", "value"),
-        State("header-settings", "value"),
-        State("file-encoding", "value")
-    ],
-    prevent_initial_call=True
-)
-def save_csv_settings(n_clicks, delimiter, quote_char, escape_char, header, encoding):
-    return {
-        "delimiter": delimiter,
-        "quote_char": quote_char,
-        "escape_char": escape_char,
-        "header": header,
-        "encoding": encoding
-    }
-
-
-@callback(
     [Output("file-preview", "data"),
      Output("file-preview", "columns"),
      Output("file-info", "children")],
-    Input("file-path", "data"),
-    State("csv-settings", "data"),
+    [Input("file-path", "data"),
+     Input("column-delimiter", "value"),
+     Input("quote-character", "value"),
+     Input("escape-character", "value"),
+     Input("header-settings", "value"),
+     Input("file-encoding", "value")],
     prevent_initial_call=True
 )
-def show_file_preview(file_path, csv_settings):
+def show_file_preview(file_path, delimiter, quote_char, escape_char, header, encoding):
+    """Update preview whenever file path or any CSV setting changes"""
     if not file_path:
         return [], [], "No file available for preview."
 
-    # Initialize default settings if csv_settings is None
-    if csv_settings is None:
-        csv_settings = {
-            "delimiter": ",",
-            "quote_char": '"',
-            "escape_char": '"',
-            "header": 0,
-            "encoding": "utf-8"
-        }
+    # Create settings dict from current values
+    csv_settings = {
+        "delimiter": delimiter or ",",
+        "quote_char": quote_char or '"',
+        "escape_char": escape_char or '"',
+        "header": header if header is not None else 0,
+        "encoding": encoding or "utf-8"
+    }
 
     filename = file_path.split("/")[-1]
-    delimiter = csv_settings.get("delimiter", ",")
-    quote_char = csv_settings.get("quote_char", '"')
-    escape_char = csv_settings.get("escape_char", '"')
-    header = csv_settings.get("header", 0)
-    encoding = csv_settings.get("encoding", "utf-8")
-
     try:
         df = read_file_from_volume(
             DATABRICKS_VOLUME_PATH, 
             filename, 
-            delimiter=delimiter,
-            escape_char=escape_char,
-            header=header,
-            encoding=encoding,
-            limit=10  # Explicitly set limit for preview
+            delimiter=csv_settings["delimiter"],
+            escape_char=csv_settings["escape_char"],
+            header=csv_settings["header"],
+            encoding=csv_settings["encoding"],
+            limit=10
         )
 
         if not df.empty:
             columns = [{"name": col, "id": col} for col in df.columns]
             data = df.to_dict("records")
-            return data[:10], columns, f"File retrieved: {filename}"
+            return data, columns, f"File retrieved: {filename}"
         else:
             return [], [], "File not found or error processing file."
     except Exception as e:
