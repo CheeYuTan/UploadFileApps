@@ -120,7 +120,13 @@ layout = dbc.Container([
 
     # Add validation and append buttons
     html.Div([
-        dbc.Button("Validate Data", id="validate-data", color="primary", className="me-2"),
+        dbc.Button(
+            "Validate Data", 
+            id="validate-data", 
+            color="primary", 
+            className="me-2",
+            disabled=True  # Initially disabled
+        ),
         dbc.Button(
             "Confirm and Append Data", 
             id="confirm-append", 
@@ -397,3 +403,12 @@ def append_data(n_clicks, file_path, catalog, schema, table, delimiter, quote_ch
         return html.Div("Data appended successfully!", className="text-success")
     except Exception as e:
         return html.Div(f"Error appending data: {str(e)}", className="text-danger")
+
+@callback(
+    Output("validate-data", "disabled"),
+    [Input("catalog-select", "value"),
+     Input("schema-select", "value"),
+     Input("table-select", "value")]
+)
+def toggle_validate_button(catalog, schema, table):
+    return not all([catalog, schema, table])
