@@ -52,24 +52,36 @@ def handle_file_upload(contents, filename):
     if contents is None:
         return "/", html.P("No file uploaded. Please try again.", className="text-danger"), None, ""
 
-    # Show upload in progress message
-    progress_message = html.Div([
-        "Uploading and processing file...",
-        html.Div(className="mt-2"),
-        dbc.Progress(value=100, striped=True, animated=True)
-    ])
+    # Validate file extension
+    if not filename.lower().endswith(('.csv', '.tsv')):
+        return "/", html.P("Invalid file format. Please upload a CSV or TSV file.", className="text-danger"), None, ""
 
-    if file_path := save_file_to_volume(contents, DATABRICKS_VOLUME_PATH, filename):
+    try:
+        # Show upload in progress message
+        progress_message = html.Div([
+            "Uploading and processing file...",
+            html.Div(className="mt-2"),
+            dbc.Progress(value=100, striped=True, animated=True)
+        ])
+
+        if file_path := save_file_to_volume(contents, DATABRICKS_VOLUME_PATH, filename):
+            return (
+                "/append-table", 
+                html.P(f"File uploaded successfully: {filename}", className="text-success"), 
+                file_path,
+                ""
+            )
+        else:
+            return (
+                "/", 
+                html.P("Failed to upload file. Please try again.", className="text-danger"), 
+                None,
+                ""
+            )
+    except Exception as e:
         return (
-            "/append-table", 
-            html.P(f"File uploaded successfully: {filename}", className="text-success"), 
-            file_path,
-            ""
-        )
-    else:
-        return (
-            "/", 
-            html.P("Failed to upload file.", className="text-danger"), 
+            "/",
+            html.P(f"Error processing file: {str(e)}", className="text-danger"),
             None,
             ""
         )

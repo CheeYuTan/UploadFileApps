@@ -136,6 +136,33 @@ def load_tables(catalog, schema):
     df = list_tables(catalog, schema)
     return [{"label": table, "value": table} for table in df['tableName'].tolist()], False
 
+def get_data_type_icon(data_type: str) -> html.Img:
+    """Returns the appropriate icon for a given data type"""
+    data_type = data_type.upper()
+    
+    icon_path = "assets/data-types/"
+    
+    if data_type in ['TINYINT', 'SMALLINT', 'INT', 'BIGINT']:
+        return html.Img(src=icon_path + "Integral_Numeric.png", height="20px", style={"marginRight": "5px"})
+    elif data_type in ['BINARY']:
+        return html.Img(src=icon_path + "Binary.png", height="20px", style={"marginRight": "5px"})
+    elif data_type in ['BOOLEAN']:
+        return html.Img(src=icon_path + "Boolean.png", height="20px", style={"marginRight": "5px"})
+    elif data_type in ['ARRAY', 'MAP', 'STRUCT', 'VARIANT', 'OBJECT']:
+        return html.Img(src=icon_path + "Complex.png", height="20px", style={"marginRight": "5px"})
+    elif data_type in ['DATE']:
+        return html.Img(src=icon_path + "Date.png", height="20px", style={"marginRight": "5px"})
+    elif data_type in ['TIMESTAMP', 'TIMESTAMP_NTZ']:
+        return html.Img(src=icon_path + "Datetime.png", height="20px", style={"marginRight": "5px"})
+    elif data_type in ['DECIMAL']:
+        return html.Img(src=icon_path + "Decimal.png", height="20px", style={"marginRight": "5px"})
+    elif data_type in ['FLOAT', 'DOUBLE']:
+        return html.Img(src=icon_path + "Float.png", height="20px", style={"marginRight": "5px"})
+    elif data_type in ['STRING']:
+        return html.Img(src=icon_path + "String.png", height="20px", style={"marginRight": "5px"})
+    else:
+        return None
+
 @callback(
     [Output("table-preview", "data"),
      Output("table-preview", "columns"),
@@ -143,57 +170,44 @@ def load_tables(catalog, schema):
      Output("table-preview-section", "style")],
     [Input("catalog-select", "value"),
      Input("schema-select", "value"),
-     Input("table-select", "value")]
+     Input("table-select", "value")],
+    background=True,
+    running=[
+        (Output("table-preview", "style"), {"opacity": "0.5"}, {"opacity": "1"}),
+        (Output("confirm-append", "disabled"), True, False)
+    ]
 )
 def update_table_preview(catalog, schema, table):
     if not all([catalog, schema, table]):
-        return [], [], "", {"display": "none"}
+        raise PreventUpdate
     
     try:
-        # Get table schema and sample data
-        schema_df = describe_table(catalog, schema, table)
-        sample_df = get_sample_data(catalog, schema, table, limit=5)
+        df = describe_table(catalog, schema, table)
+        data_types = get_table_schema(catalog, schema, table)
         
-        if not sample_df.empty:
-            # Remove _rescued_data column if it exists
-            if '_rescued_data' in sample_df.columns:
-                sample_df = sample_df.drop('_rescued_data', axis=1)
+        columns = []
+        for col in df.columns:
+            data_type = data_types.get(col, "").upper()
+            icon = get_data_type_icon(data_type)
             
-            # Convert all values to string to ensure they're displayable
-            sample_df = sample_df.astype(str)
-            
-            columns = [{"name": col, "id": col} for col in sample_df.columns]
-            data = sample_df.to_dict("records")
-            
-            # Create schema table
-            schema_table = dt.DataTable(
-                id="schema-table",
-                columns=[
-                    {"name": "Column", "id": "column"},
-                    {"name": "Type", "id": "type"}
-                ],
-                data=[
-                    {"column": row['col_name'], "type": row['data_type']}
-                    for _, row in schema_df.iterrows()
-                    if row['col_name'] != '_rescued_data'
-                ],
-                style_table={"width": "100%"},
-                style_cell={'textAlign': 'left'},
-                style_header={'fontWeight': 'bold'}
-            )
-            
-            # Create metadata with row/column count and schema table
-            metadata = html.Div([
-                html.Div(f"Showing 5 rows, {len(sample_df.columns)} columns", className="mb-2"),
-                html.H6("Table Schema:", className="mt-3 mb-2"),
-                schema_table
-            ])
-            
-            return data, columns, metadata, {"display": "block"}
+            if icon:
+                name_with_icon = html.Div([
+                    icon,
+                    html.Span(col)
+                ], style={"display": "flex", "alignItems": "center"})
+            else:
+                name_with_icon = col
+                
+            columns.append({
+                "name": name_with_icon,
+                "id": col,
+            })
+        
+        return df.to_dict('records'), columns, generate_metadata_text(df), {"display": "block"}
+        
     except Exception as e:
-        print(f"Error loading table preview: {str(e)}")
-    
-    return [], [], "", {"display": "none"}
+        print(f"Error updating table preview: {str(e)}")
+        return [], [], f"Error: {str(e)}", {"display": "none"}
 
 @callback(
     [Output("file-preview", "data"),

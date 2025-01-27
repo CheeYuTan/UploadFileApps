@@ -77,6 +77,14 @@ def save_file_to_volume(encoded_content: str, volume_path: str, file_name: str, 
         str: The full path of the saved file.
     """
     try:
+        # Check file size (limit to 100MB for example)
+        content_string = encoded_content.split(",")[1]
+        file_size = len(base64.b64decode(content_string))
+        max_size = 100 * 1024 * 1024  # 100MB
+
+        if file_size > max_size:
+            raise ValueError(f"File size exceeds maximum limit of {max_size/1024/1024}MB")
+
         # Decode base64 content and save to a temporary local file
         content_string = encoded_content.split(",")[1]
         decoded = base64.b64decode(content_string)
@@ -99,7 +107,7 @@ def save_file_to_volume(encoded_content: str, volume_path: str, file_name: str, 
 
     except Exception as e:
         print(f"Error uploading file to volume: {str(e)}")
-        return None
+        raise
     
 def read_file_from_volume(volume_path: str, file_name: str, delimiter: str = ",", quote_char: str = '"', header: bool = True, encoding: str = "utf-8", limit: int = 10) -> pd.DataFrame:
     """
