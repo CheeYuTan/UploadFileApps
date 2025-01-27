@@ -291,16 +291,38 @@ def show_file_preview(file_path, delimiter, quote_char, header, encoding):
      State("quote-character", "value"),
      State("header-settings", "value"),
      State("file-encoding", "value")],
-    prevent_initial_call=True
+    prevent_initial_call=True,
+    # Add loading states
+    running=[
+        (Output("validate-data", "disabled"), True, False),
+        (Output("validate-data", "children"), 
+         "Validating...", 
+         "Validate Data")
+    ]
 )
 def validate_data(n_clicks, file_path, catalog, schema, table, delimiter, quote_char, header, encoding):
     if not n_clicks or not all([file_path, catalog, schema, table]):
         return "", True
 
     try:
+        validation_results = []
+        
         # Get table schema
         schema_df = describe_table(catalog, schema, table)
         table_dtypes = dict(zip(schema_df['col_name'], schema_df['data_type']))
+
+        # Add validation header
+        validation_results.append(
+            html.H6("Validation Results:", className="mt-3 mb-3")
+        )
+
+        # File check
+        if not file_path.lower().endswith('.csv'):
+            validation_results.append(
+                html.Div("❌ Invalid file type. Only CSV files are supported.", 
+                        className="text-danger mb-2")
+            )
+            return html.Div(validation_results), True
 
         # Read the file
         csv_settings = {
@@ -368,12 +390,29 @@ def validate_data(n_clicks, file_path, catalog, schema, table, delimiter, quote_
             ])
 
         if validation_errors:
-            return html.Div(validation_errors), True
+            validation_results.extend([
+                html.Div([
+                    html.I(className="fas fa-times-circle me-2"),
+                    error
+                ], className="text-danger mb-2")
+                for error in validation_errors
+            ])
+            return html.Div(validation_results), True
         else:
-            return html.Div("✓ Validation successful!", className="text-success"), False
+            return html.Div([
+                html.Div([
+                    html.I(className="fas fa-check-circle me-2"),
+                    "Validation successful!"
+                ], className="text-success")
+            ]), False
 
     except Exception as e:
-        return html.Div(f"Error during validation: {str(e)}", className="text-danger"), True
+        return html.Div([
+            html.Div([
+                html.I(className="fas fa-exclamation-circle me-2"),
+                f"Error during validation: {str(e)}"
+            ], className="text-danger")
+        ]), True
 
 @callback(
     Output("processing-status", "children"),

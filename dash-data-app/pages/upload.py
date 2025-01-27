@@ -19,21 +19,22 @@ layout = dbc.Container([
     ),
 
     dcc.Upload(
-        id="file-upload",
+        id="upload-data",
         children=html.Div([
-            html.Img(src="/assets/upload-icon.png", className="upload-icon"),
-            html.P("Drop a file here, or browse your local system", className="text-muted text-center"),
-            html.P("Supported file formats: .csv, .tsv", className="text-muted small text-center")
+            "Drag and Drop or ",
+            html.A("Select a CSV File")
         ]),
         style={
-            "border": "2px dashed #ddd",
-            "padding": "40px",
-            "text-align": "center",
-            "border-radius": "10px",
-            "background-color": "#f8f9fa",
-            "cursor": "pointer"
+            "width": "100%",
+            "height": "60px",
+            "lineHeight": "60px",
+            "borderWidth": "1px",
+            "borderStyle": "dashed",
+            "borderRadius": "5px",
+            "textAlign": "center",
+            "margin": "10px"
         },
-        multiple=False
+        accept=".csv"
     ),
 
     html.Div(id="upload-status", className="mt-4 text-center"),
