@@ -1,7 +1,7 @@
 import dash
 import dash_bootstrap_components as dbc
 import dash.dash_table as dt
-from dash import html, dcc, callback, Input, Output, State
+from dash import html, dcc, callback, Input, Output, State, ctx
 from dbutils import (
     read_file_from_volume, 
     list_catalogs, 
@@ -15,6 +15,7 @@ from components.csv_settings import get_csv_settings_modal
 import os
 from typing import Dict, List, Tuple, Optional
 import pandas as pd
+from dash_bootstrap_components import Tooltip
 
 os.makedirs("./cache", exist_ok=True)
 
@@ -50,7 +51,25 @@ layout = dbc.Container([
         type="circle",
         children=dt.DataTable(
             id="file-preview", 
-            style_table={"width": "100%"}
+            style_table={"width": "100%"},
+            style_cell={
+                'textAlign': 'left',
+                'padding': '8px',
+                'whiteSpace': 'normal',
+                'height': 'auto',
+            },
+            style_header={
+                'backgroundColor': 'rgb(230, 230, 230)',
+                'fontWeight': 'bold',
+                'cursor': 'help'  # Show cursor on header hover
+            },
+            style_data_conditional=[{
+                'if': {'row_index': 'odd'},
+                'backgroundColor': 'rgb(248, 248, 248)'
+            }],
+            tooltip_delay=0,
+            tooltip_duration=None,
+            page_size=10
         )
     ),
 
@@ -234,7 +253,6 @@ def update_table_preview(
     schema: Optional[str], 
     table: Optional[str]
 ) -> Tuple[List[dict], List[dict], str, dict]:
-    """Update the table preview with sample data and column data types."""
     if not all([catalog, schema, table]):
         return [], [], "", {"display": "none"}
     
@@ -244,26 +262,29 @@ def update_table_preview(
         schema_df = describe_table(catalog, schema, table)
         data_types = dict(zip(schema_df['col_name'], schema_df['data_type']))
         
-        # Prepare columns with data type icons
+        # Create columns with tooltips
         columns = []
-        for col in sample_df.columns:
+        tooltips = []
+        for i, col in enumerate(sample_df.columns):
             data_type = data_types.get(col, "").upper()
-            icon = get_data_type_icon(data_type)
+            tooltip_id = f"tooltip-{col}-{i}"
             
-            # Create header with icon and tooltip
-            header = html.Div([
-                icon if icon else "",
-                html.Span(col, style={"marginLeft": "5px"}),
-            ], style={
-                "display": "flex", 
-                "alignItems": "center",
-                "cursor": "help"  # Show cursor indicating tooltip
-            }, title=f"Type: {data_type}")  # Native HTML tooltip
-                
             columns.append({
-                "name": header,
+                "name": f"ⓘ {col}",  # Add an info icon character
                 "id": col,
+                "type": "numeric" if data_type in ["INT", "FLOAT", "DECIMAL"] else "text"
             })
+            
+            tooltips.append(
+                dbc.Tooltip(
+                    f"Type: {data_type}",
+                    target={"type": "th", "column_id": col},
+                    placement="top"
+                )
+            )
+        
+        # Add tooltips to the layout
+        app.layout.children.extend(tooltips)
         
         return (
             sample_df.to_dict('records'),
@@ -314,46 +335,48 @@ def show_file_preview(file_path, delimiter, quote_char, escape_char, header, enc
         )
 
         if not df.empty:
-            # Remove _rescued_data column if it exists
             if '_rescued_data' in df.columns:
                 df = df.drop('_rescued_data', axis=1)
             
-            # Infer data types and create columns with icons
+            # Create columns with inferred types
             columns = []
-            for col in df.columns:
-                # Infer data type from the column
+            tooltips = []
+            for i, col in enumerate(df.columns):
+                # Infer data type
                 sample_values = df[col].dropna()
                 if len(sample_values) > 0:
                     if pd.api.types.is_numeric_dtype(sample_values):
-                        if all(sample_values.astype(str).str.contains('\.').fillna(False)):
-                            data_type = "FLOAT"
-                        else:
-                            data_type = "INT"
+                        data_type = "FLOAT" if all(sample_values.astype(str).str.contains('\.').fillna(False)) else "INT"
+                        col_type = "numeric"
                     elif pd.api.types.is_datetime64_any_dtype(sample_values):
                         data_type = "TIMESTAMP"
+                        col_type = "text"
                     elif pd.api.types.is_bool_dtype(sample_values):
                         data_type = "BOOLEAN"
+                        col_type = "text"
                     else:
                         data_type = "STRING"
+                        col_type = "text"
                 else:
                     data_type = "STRING"
-                
-                icon = get_data_type_icon(data_type)
-                
-                # Create header with icon and tooltip
-                header = html.Div([
-                    icon if icon else "",
-                    html.Span(col, style={"marginLeft": "5px"}),
-                ], style={
-                    "display": "flex", 
-                    "alignItems": "center",
-                    "cursor": "help"
-                }, title=f"Type: {data_type}")
+                    col_type = "text"
                 
                 columns.append({
-                    "name": header,
+                    "name": f"ⓘ {col}",
                     "id": col,
+                    "type": col_type
                 })
+                
+                tooltips.append(
+                    dbc.Tooltip(
+                        f"Type: {data_type}",
+                        target={"type": "th", "column_id": col},
+                        placement="top"
+                    )
+                )
+            
+            # Add tooltips to the layout
+            app.layout.children.extend(tooltips)
             
             preview_metadata = f"Showing {len(df)} rows, {len(df.columns)} columns"
             return df.to_dict("records"), columns, f"File retrieved: {filename}", preview_metadata
