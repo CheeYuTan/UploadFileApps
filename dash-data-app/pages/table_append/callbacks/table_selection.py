@@ -57,24 +57,42 @@ def update_table_preview(catalog, schema, table):
         # Get sample data
         sample_df = get_sample_data(catalog, schema, table, limit=10)
         
-        # Convert complex types to strings
+        print("Column types before conversion:")
+        print(sample_df.dtypes)
+        
+        # Convert ALL columns to string first
         for col in sample_df.columns:
-            if isinstance(sample_df[col].iloc[0], (list, dict)) or 'array' in str(sample_df[col].dtype).lower():
-                sample_df[col] = sample_df[col].apply(str)
+            try:
+                sample_df[col] = sample_df[col].astype(str)
+            except Exception as e:
+                print(f"Error converting column {col}: {str(e)}")
+                # If conversion fails, try converting individual values
+                sample_df[col] = sample_df[col].apply(lambda x: str(x) if x is not None else '')
+        
+        print("Column types after conversion:")
+        print(sample_df.dtypes)
         
         # Create simple columns
         columns = [{"name": col, "id": col} for col in sample_df.columns]
         
-        # Convert DataFrame to records and ensure all values are of valid types
-        records = []
-        for record in sample_df.replace({pd.NA: None}).to_dict('records'):
-            clean_record = {}
-            for key, value in record.items():
-                if isinstance(value, (str, int, float, bool)) or value is None:
-                    clean_record[key] = value
-                else:
-                    clean_record[key] = str(value)
-            records.append(clean_record)
+        # Convert to records with string values only
+        records = sample_df.to_dict('records')
+        
+        # Debug first record
+        print("First record before final conversion:")
+        print(records[0] if records else "No records")
+        
+        # Ensure all values are strings
+        for record in records:
+            for key in record:
+                try:
+                    record[key] = str(record[key])
+                except Exception as e:
+                    print(f"Error converting value for {key}: {str(e)}")
+                    record[key] = ''
+        
+        print("First record after final conversion:")
+        print(records[0] if records else "No records")
         
         return (
             records,
