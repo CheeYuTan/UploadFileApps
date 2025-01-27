@@ -23,7 +23,6 @@ def show_file_preview(file_path, delimiter, quote_char, escape_char, header, enc
     csv_settings = {
         "delimiter": delimiter or ",",
         "quote_char": quote_char or '"',
-        "escape_char": escape_char or '"',
         "header": header if header is not None else True,
         "encoding": encoding or "utf-8"
     }
@@ -44,24 +43,19 @@ def show_file_preview(file_path, delimiter, quote_char, escape_char, header, enc
             if '_rescued_data' in df.columns:
                 df = df.drop('_rescued_data', axis=1)
             
-            # Convert complex types to strings
+            # Convert ALL columns to string first
             for col in df.columns:
-                if isinstance(df[col].iloc[0], (list, dict)) or 'array' in str(df[col].dtype).lower():
-                    df[col] = df[col].apply(str)
+                try:
+                    df[col] = df[col].astype(str)
+                except Exception as e:
+                    print(f"Error converting column {col}: {str(e)}")
+                    df[col] = df[col].apply(lambda x: str(x) if x is not None else '')
             
             # Create simple columns
             columns = [{"name": col, "id": col} for col in df.columns]
             
-            # Convert DataFrame to records and ensure all values are of valid types
-            records = []
-            for record in df.replace({pd.NA: None}).to_dict('records'):
-                clean_record = {}
-                for key, value in record.items():
-                    if isinstance(value, (str, int, float, bool)) or value is None:
-                        clean_record[key] = value
-                    else:
-                        clean_record[key] = str(value)
-                records.append(clean_record)
+            # Convert to records
+            records = df.to_dict('records')
             
             preview_metadata = f"Showing {len(df)} rows, {len(df.columns)} columns"
             return (
