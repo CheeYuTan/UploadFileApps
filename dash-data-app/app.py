@@ -1,4 +1,4 @@
-from dash import Dash, html
+from dash import Dash, html, page_container
 from dash.long_callback import DiskcacheLongCallbackManager
 import diskcache
 import dash_bootstrap_components as dbc
@@ -16,7 +16,7 @@ app = Dash(
 )
 
 app.layout = dbc.Container([
-    dash.page_container
+    page_container
 ])
 
 if __name__ == "__main__":

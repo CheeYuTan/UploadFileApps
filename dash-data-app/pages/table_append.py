@@ -13,6 +13,8 @@ from dbutils import (
 from config import DATABRICKS_VOLUME_PATH
 from components.csv_settings import get_csv_settings_modal
 import os
+from typing import Dict, List, Tuple, Optional
+import pandas as pd
 
 os.makedirs("./cache", exist_ok=True)
 
@@ -166,6 +168,35 @@ def get_data_type_icon(data_type: str) -> html.Img:
     else:
         return None
 
+def get_table_schema(catalog: str, schema: str, table: str) -> Dict[str, str]:
+    """Get the schema of a table with column names and data types.
+    
+    Args:
+        catalog: The catalog name
+        schema: The schema name 
+        table: The table name
+        
+    Returns:
+        Dict mapping column names to their data types
+    """
+    try:
+        df = describe_table(catalog, schema, table)
+        return dict(zip(df['col_name'], df['data_type']))
+    except Exception as e:
+        print(f"Error getting table schema: {str(e)}")
+        return {}
+
+def generate_metadata_text(df: pd.DataFrame) -> str:
+    """Generate metadata text describing the dataframe.
+    
+    Args:
+        df: The pandas DataFrame
+        
+    Returns:
+        String with metadata description
+    """
+    return f"Table contains {len(df)} rows and {len(df.columns)} columns"
+
 @callback(
     [Output("table-preview", "data"),
      Output("table-preview", "columns"),
@@ -180,9 +211,27 @@ def get_data_type_icon(data_type: str) -> html.Img:
         (Output("confirm-append", "disabled"), True, False)
     ]
 )
-def update_table_preview(catalog, schema, table):
+def update_table_preview(
+    catalog: Optional[str], 
+    schema: Optional[str], 
+    table: Optional[str]
+) -> Tuple[List[dict], List[dict], str, dict]:
+    """Update the table preview when selection changes.
+    
+    Args:
+        catalog: Selected catalog name
+        schema: Selected schema name 
+        table: Selected table name
+        
+    Returns:
+        Tuple containing:
+        - List of row data dictionaries
+        - List of column definitions
+        - Metadata text
+        - Style dictionary
+    """
     if not all([catalog, schema, table]):
-        raise PreventUpdate
+        return [], [], "", {"display": "none"}
     
     try:
         df = describe_table(catalog, schema, table)
@@ -193,20 +242,22 @@ def update_table_preview(catalog, schema, table):
             data_type = data_types.get(col, "").upper()
             icon = get_data_type_icon(data_type)
             
-            if icon:
-                name_with_icon = html.Div([
-                    icon,
-                    html.Span(col)
-                ], style={"display": "flex", "alignItems": "center"})
-            else:
-                name_with_icon = col
+            name_with_icon = html.Div([
+                icon,
+                html.Span(col)
+            ], style={"display": "flex", "alignItems": "center"}) if icon else col
                 
             columns.append({
                 "name": name_with_icon,
                 "id": col,
             })
         
-        return df.to_dict('records'), columns, generate_metadata_text(df), {"display": "block"}
+        return (
+            df.to_dict('records'),
+            columns, 
+            generate_metadata_text(df),
+            {"display": "block"}
+        )
         
     except Exception as e:
         print(f"Error updating table preview: {str(e)}")
