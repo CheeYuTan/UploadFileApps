@@ -67,9 +67,12 @@ layout = dbc.Container([
                 'if': {'row_index': 'odd'},
                 'backgroundColor': 'rgb(248, 248, 248)'
             }],
-            tooltip_delay=0,
-            tooltip_duration=None,
-            page_size=10
+            tooltip_data=[],  # Will be populated by callback
+            tooltip_duration=None,  # Show tooltip until hover off
+            css=[{
+                'selector': '.dash-table-tooltip',
+                'rule': 'background-color: white; font-size: 12px; padding: 5px;'
+            }]
         )
     ),
 
@@ -112,13 +115,19 @@ layout = dbc.Container([
                         },
                         style_header={
                             'backgroundColor': 'rgb(230, 230, 230)',
-                            'fontWeight': 'bold'
+                            'fontWeight': 'bold',
+                            'cursor': 'help'
                         },
                         style_data_conditional=[{
                             'if': {'row_index': 'odd'},
                             'backgroundColor': 'rgb(248, 248, 248)'
                         }],
-                        page_size=10
+                        tooltip_data=[],
+                        tooltip_duration=None,
+                        css=[{
+                            'selector': '.dash-table-tooltip',
+                            'rule': 'background-color: white; font-size: 12px; padding: 5px;'
+                        }]
                     )
                 )
             ], id="table-preview-section", style={"display": "none"}),
@@ -264,27 +273,14 @@ def update_table_preview(
         
         # Create columns with tooltips
         columns = []
-        tooltips = []
-        for i, col in enumerate(sample_df.columns):
+        for col in sample_df.columns:
             data_type = data_types.get(col, "").upper()
-            tooltip_id = f"tooltip-{col}-{i}"
-            
             columns.append({
                 "name": f"ⓘ {col}",  # Add an info icon character
                 "id": col,
-                "type": "numeric" if data_type in ["INT", "FLOAT", "DECIMAL"] else "text"
+                "type": "numeric" if data_type in ["INT", "FLOAT", "DECIMAL"] else "text",
+                "tooltip": f"Type: {data_type}"  # Add tooltip directly to column
             })
-            
-            tooltips.append(
-                dbc.Tooltip(
-                    f"Type: {data_type}",
-                    target={"type": "th", "column_id": col},
-                    placement="top"
-                )
-            )
-        
-        # Add tooltips to the layout
-        app.layout.children.extend(tooltips)
         
         return (
             sample_df.to_dict('records'),
@@ -340,8 +336,7 @@ def show_file_preview(file_path, delimiter, quote_char, escape_char, header, enc
             
             # Create columns with inferred types
             columns = []
-            tooltips = []
-            for i, col in enumerate(df.columns):
+            for col in df.columns:
                 # Infer data type
                 sample_values = df[col].dropna()
                 if len(sample_values) > 0:
@@ -364,19 +359,9 @@ def show_file_preview(file_path, delimiter, quote_char, escape_char, header, enc
                 columns.append({
                     "name": f"ⓘ {col}",
                     "id": col,
-                    "type": col_type
+                    "type": col_type,
+                    "tooltip": f"Type: {data_type}"  # Add tooltip directly to column
                 })
-                
-                tooltips.append(
-                    dbc.Tooltip(
-                        f"Type: {data_type}",
-                        target={"type": "th", "column_id": col},
-                        placement="top"
-                    )
-                )
-            
-            # Add tooltips to the layout
-            app.layout.children.extend(tooltips)
             
             preview_metadata = f"Showing {len(df)} rows, {len(df.columns)} columns"
             return df.to_dict("records"), columns, f"File retrieved: {filename}", preview_metadata
