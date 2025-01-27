@@ -77,12 +77,30 @@ layout = dbc.Container([
             ]),
             # Add table preview section
             html.Div([
-                html.H6("Target Table Preview", className="mt-4"),
-                html.Div(id="table-preview-metadata", className="text-muted small mb-2"),
+                html.H6("Table Preview", className="mt-4"),
+                html.Div(id="table-preview-metadata", className="text-muted mb-2"),
                 dcc.Loading(
                     id="loading-table-preview",
                     type="circle",
-                    children=dt.DataTable(id="table-preview", style_table={"width": "100%"})
+                    children=dt.DataTable(
+                        id="table-preview",
+                        style_table={"width": "100%"},
+                        style_cell={
+                            'textAlign': 'left',
+                            'padding': '8px',
+                            'whiteSpace': 'normal',
+                            'height': 'auto',
+                        },
+                        style_header={
+                            'backgroundColor': 'rgb(230, 230, 230)',
+                            'fontWeight': 'bold'
+                        },
+                        style_data_conditional=[{
+                            'if': {'row_index': 'odd'},
+                            'backgroundColor': 'rgb(248, 248, 248)'
+                        }],
+                        page_size=10
+                    )
                 )
             ], id="table-preview-section", style={"display": "none"}),
         ])
@@ -216,46 +234,41 @@ def update_table_preview(
     schema: Optional[str], 
     table: Optional[str]
 ) -> Tuple[List[dict], List[dict], str, dict]:
-    """Update the table preview when selection changes.
-    
-    Args:
-        catalog: Selected catalog name
-        schema: Selected schema name 
-        table: Selected table name
-        
-    Returns:
-        Tuple containing:
-        - List of row data dictionaries
-        - List of column definitions
-        - Metadata text
-        - Style dictionary
-    """
+    """Update the table preview with sample data and column data types."""
     if not all([catalog, schema, table]):
         return [], [], "", {"display": "none"}
     
     try:
-        df = describe_table(catalog, schema, table)
-        data_types = get_table_schema(catalog, schema, table)
+        # Get sample data and schema
+        sample_df = get_sample_data(catalog, schema, table, limit=10)
+        schema_df = describe_table(catalog, schema, table)
+        data_types = dict(zip(schema_df['col_name'], schema_df['data_type']))
         
+        # Prepare columns with data type icons
         columns = []
-        for col in df.columns:
+        for col in sample_df.columns:
             data_type = data_types.get(col, "").upper()
             icon = get_data_type_icon(data_type)
             
-            name_with_icon = html.Div([
-                icon,
-                html.Span(col)
-            ], style={"display": "flex", "alignItems": "center"}) if icon else col
+            # Create header with icon and tooltip
+            header = html.Div([
+                icon if icon else "",
+                html.Span(col, style={"marginLeft": "5px"}),
+            ], style={
+                "display": "flex", 
+                "alignItems": "center",
+                "cursor": "help"  # Show cursor indicating tooltip
+            }, title=f"Type: {data_type}")  # Native HTML tooltip
                 
             columns.append({
-                "name": name_with_icon,
+                "name": header,
                 "id": col,
             })
         
         return (
-            df.to_dict('records'),
-            columns, 
-            generate_metadata_text(df),
+            sample_df.to_dict('records'),
+            columns,
+            f"Showing {len(sample_df)} sample rows",
             {"display": "block"}
         )
         
@@ -305,11 +318,45 @@ def show_file_preview(file_path, delimiter, quote_char, escape_char, header, enc
             if '_rescued_data' in df.columns:
                 df = df.drop('_rescued_data', axis=1)
             
-            columns = [{"name": col, "id": col} for col in df.columns]
-            data = df.to_dict("records")
-            preview_metadata = f"Showing {len(data)} rows, {len(df.columns)} columns"
+            # Infer data types and create columns with icons
+            columns = []
+            for col in df.columns:
+                # Infer data type from the column
+                sample_values = df[col].dropna()
+                if len(sample_values) > 0:
+                    if pd.api.types.is_numeric_dtype(sample_values):
+                        if all(sample_values.astype(str).str.contains('\.').fillna(False)):
+                            data_type = "FLOAT"
+                        else:
+                            data_type = "INT"
+                    elif pd.api.types.is_datetime64_any_dtype(sample_values):
+                        data_type = "TIMESTAMP"
+                    elif pd.api.types.is_bool_dtype(sample_values):
+                        data_type = "BOOLEAN"
+                    else:
+                        data_type = "STRING"
+                else:
+                    data_type = "STRING"
+                
+                icon = get_data_type_icon(data_type)
+                
+                # Create header with icon and tooltip
+                header = html.Div([
+                    icon if icon else "",
+                    html.Span(col, style={"marginLeft": "5px"}),
+                ], style={
+                    "display": "flex", 
+                    "alignItems": "center",
+                    "cursor": "help"
+                }, title=f"Type: {data_type}")
+                
+                columns.append({
+                    "name": header,
+                    "id": col,
+                })
             
-            return data, columns, f"File retrieved: {filename}", preview_metadata
+            preview_metadata = f"Showing {len(df)} rows, {len(df.columns)} columns"
+            return df.to_dict("records"), columns, f"File retrieved: {filename}", preview_metadata
         else:
             return [], [], "File not found or error processing file.", ""
     except Exception as e:
