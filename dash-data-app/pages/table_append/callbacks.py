@@ -127,9 +127,15 @@ def show_file_preview(file_path, delimiter, quote_char, escape_char, header, enc
             tooltip_headers = {}
             header_conditionals = []
             
+            # Create a dictionary of column data types
+            data_types = {}
             for col in df.columns:
                 # Infer data type from the column
-                data_type = infer_column_type(df[col])
+                data_types[col] = infer_column_type(df[col])
+            
+            # Create columns and tooltips
+            for col in df.columns:
+                data_type = data_types[col]
                 icon = get_data_type_icon(data_type)
                 icon_path = icon.get('src') if icon else None
                 
@@ -159,6 +165,7 @@ def show_file_preview(file_path, delimiter, quote_char, escape_char, header, enc
         else:
             return [], [], "File not found or error processing file.", "", {}, []
     except Exception as e:
+        print(f"Error processing file: {str(e)}")
         return [], [], f"Error processing file: {str(e)}", "", {}, []
 
 # Add catalog/schema/table selection callbacks
