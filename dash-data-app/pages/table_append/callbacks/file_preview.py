@@ -44,25 +44,11 @@ def show_file_preview(file_path, delimiter, quote_char, escape_char, header, enc
             if '_rescued_data' in df.columns:
                 df = df.drop('_rescued_data', axis=1)
             
-            # Handle complex data types
-            for col in df.columns:
-                # Convert arrays, structs, and other complex types to string representation
-                if pd.api.types.is_complex_dtype(df[col]):
-                    df[col] = df[col].apply(lambda x: str(x) if x is not None else '')
-                # Convert all other types to string
-                else:
-                    df[col] = df[col].astype(str)
-            
             # Create simple columns
             columns = [{"name": col, "id": col} for col in df.columns]
             
-            # Convert to records and ensure all values are strings
-            records = []
-            for record in df.to_dict('records'):
-                clean_record = {}
-                for key, value in record.items():
-                    clean_record[key] = str(value) if value is not None else ''
-                records.append(clean_record)
+            # Convert DataFrame to records
+            records = df.replace({pd.NA: None}).to_dict('records')
             
             preview_metadata = f"Showing {len(df)} rows, {len(df.columns)} columns"
             return (
