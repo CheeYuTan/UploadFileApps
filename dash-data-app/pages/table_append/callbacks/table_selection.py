@@ -1,5 +1,6 @@
 from dash import callback, Input, Output
 from dbutils import list_catalogs, list_schemas, list_tables, get_sample_data
+import pandas as pd
 
 @callback(
     Output("catalog-select", "options"),
@@ -56,14 +57,28 @@ def update_table_preview(catalog, schema, table):
         # Get sample data
         sample_df = get_sample_data(catalog, schema, table, limit=10)
         
-        # Convert all data to strings to avoid type issues
-        sample_df = sample_df.astype(str)
+        # Handle complex data types
+        for col in sample_df.columns:
+            # Convert arrays, structs, and other complex types to string representation
+            if pd.api.types.is_complex_dtype(sample_df[col]):
+                sample_df[col] = sample_df[col].apply(lambda x: str(x) if x is not None else '')
+            # Convert all other types to string
+            else:
+                sample_df[col] = sample_df[col].astype(str)
         
         # Create simple columns
         columns = [{"name": col, "id": col} for col in sample_df.columns]
         
+        # Convert to records and ensure all values are strings
+        records = []
+        for record in sample_df.to_dict('records'):
+            clean_record = {}
+            for key, value in record.items():
+                clean_record[key] = str(value) if value is not None else ''
+            records.append(clean_record)
+        
         return (
-            sample_df.to_dict('records'),
+            records,
             columns,
             f"Showing {len(sample_df)} sample rows, {len(sample_df.columns)} columns",
             {"display": "block"}
