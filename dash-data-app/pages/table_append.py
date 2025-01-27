@@ -37,6 +37,21 @@ layout = dbc.Container([
         ]),
     ),
 
+    # File Preview Section
+    html.H5("File Preview", className="fw-bold mt-4"),
+    html.Div(id="file-preview-metadata", className="text-muted small mb-2"),
+    dcc.Loading(
+        id="loading-preview",
+        type="circle",
+        children=dt.DataTable(
+            id="file-preview", 
+            style_table={"width": "100%"}
+        )
+    ),
+
+    dbc.Button("Advanced Attributes", id="advanced-attributes-btn", color="primary", className="mt-3"),
+    get_csv_settings_modal(),
+
     # Table selection section
     dbc.Row([
         dbc.Col([
@@ -68,19 +83,6 @@ layout = dbc.Container([
         ])
     ]),
 
-    html.H5("File Preview", className="fw-bold mt-4"),
-    html.Div(id="file-preview-metadata", className="text-muted small mb-2"),
-    dcc.Loading(
-        id="loading-preview",
-        type="circle",
-        children=dt.DataTable(
-            id="file-preview", 
-            style_table={"width": "100%"}
-        )
-    ),
-
-    dbc.Button("Advanced Attributes", id="advanced-attributes-btn", color="primary", className="mt-3"),
-    get_csv_settings_modal(),
     dbc.Button("Confirm and Append Data", id="confirm-append", color="success", className="mt-3"),
 
     dcc.Store(id="file-path", storage_type="session"),
@@ -163,12 +165,28 @@ def update_table_preview(catalog, schema, table):
             columns = [{"name": col, "id": col} for col in sample_df.columns]
             data = sample_df.to_dict("records")
             
-            # Create metadata string with schema info
-            metadata = f"Showing 5 rows, {len(sample_df.columns)} columns. "
-            metadata += "Data types: " + ", ".join([
-                f"{row['col_name']}: {row['data_type']}"
-                for _, row in schema_df.iterrows()
-                if row['col_name'] != '_rescued_data'
+            # Create schema table
+            schema_table = dt.DataTable(
+                id="schema-table",
+                columns=[
+                    {"name": "Column", "id": "column"},
+                    {"name": "Type", "id": "type"}
+                ],
+                data=[
+                    {"column": row['col_name'], "type": row['data_type']}
+                    for _, row in schema_df.iterrows()
+                    if row['col_name'] != '_rescued_data'
+                ],
+                style_table={"width": "100%"},
+                style_cell={'textAlign': 'left'},
+                style_header={'fontWeight': 'bold'}
+            )
+            
+            # Create metadata with row/column count and schema table
+            metadata = html.Div([
+                html.Div(f"Showing 5 rows, {len(sample_df.columns)} columns", className="mb-2"),
+                html.H6("Table Schema:", className="mt-3 mb-2"),
+                schema_table
             ])
             
             return data, columns, metadata, {"display": "block"}
