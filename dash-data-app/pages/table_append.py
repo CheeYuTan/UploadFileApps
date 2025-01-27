@@ -119,14 +119,7 @@ layout = dbc.Container([
                             'if': {'row_index': 'odd'},
                             'backgroundColor': 'rgb(248, 248, 248)'
                         }],
-                        style_header_conditional=[{
-                            'if': {'column_id': col},
-                            'backgroundImage': f'url({get_data_type_icon(data_type).get("src")})',
-                            'backgroundRepeat': 'no-repeat',
-                            'backgroundPosition': '4px center',
-                            'backgroundSize': '20px',
-                            'paddingLeft': '28px'
-                        } for col, data_type in data_types.items()]
+                        style_header_conditional=[]  # Initialize empty, will be populated by callback
                     )
                 )
             ], id="table-preview-section", style={"display": "none"}),
@@ -247,7 +240,8 @@ def generate_metadata_text(df: pd.DataFrame) -> str:
      Output("table-preview", "columns"),
      Output("table-preview-metadata", "children"),
      Output("table-preview-section", "style"),
-     Output("table-preview", "tooltip_header")],
+     Output("table-preview", "tooltip_header"),
+     Output("table-preview", "style_header_conditional")],
     [Input("catalog-select", "value"),
      Input("schema-select", "value"),
      Input("table-select", "value")],
@@ -261,9 +255,9 @@ def update_table_preview(
     catalog: Optional[str], 
     schema: Optional[str], 
     table: Optional[str]
-) -> Tuple[List[dict], List[dict], str, dict, dict]:
+) -> Tuple[List[dict], List[dict], str, dict, dict, List[dict]]:
     if not all([catalog, schema, table]):
-        return [], [], "", {"display": "none"}, {}
+        return [], [], "", {"display": "none"}, {}, []
     
     try:
         # Get sample data and schema
@@ -274,42 +268,54 @@ def update_table_preview(
         # Create columns with tooltips
         columns = []
         tooltip_headers = {}
+        header_conditionals = []
         
         for col in sample_df.columns:
             data_type = data_types.get(col, "").upper()
             icon = get_data_type_icon(data_type)
             icon_path = icon.get('src') if icon else None
             
-            # Use a simpler column name format
             columns.append({
-                "name": col,  # Just use the column name
+                "name": col,
                 "id": col,
                 "type": "numeric" if data_type in ["INT", "FLOAT", "DECIMAL"] else "text"
             })
-            # Store the data type in tooltip
+            
             tooltip_headers[col] = {
                 "value": f"Type: {data_type}",
                 "type": "markdown"
             }
+            
+            if icon_path:
+                header_conditionals.append({
+                    'if': {'column_id': col},
+                    'backgroundImage': f'url({icon_path})',
+                    'backgroundRepeat': 'no-repeat',
+                    'backgroundPosition': '4px center',
+                    'backgroundSize': '20px',
+                    'paddingLeft': '28px'
+                })
         
         return (
             sample_df.to_dict('records'),
             columns,
             f"Showing {len(sample_df)} sample rows",
             {"display": "block"},
-            tooltip_headers
+            tooltip_headers,
+            header_conditionals
         )
         
     except Exception as e:
         print(f"Error updating table preview: {str(e)}")
-        return [], [], f"Error: {str(e)}", {"display": "none"}, {}
+        return [], [], f"Error: {str(e)}", {"display": "none"}, {}, []
 
 @callback(
     [Output("file-preview", "data"),
      Output("file-preview", "columns"),
      Output("file-info", "children"),
      Output("file-preview-metadata", "children"),
-     Output("file-preview", "tooltip_header")],
+     Output("file-preview", "tooltip_header"),
+     Output("file-preview", "style_header_conditional")],
     [Input("file-path", "data"),
      Input("column-delimiter", "value"),
      Input("quote-character", "value"),
@@ -320,7 +326,7 @@ def update_table_preview(
 )
 def show_file_preview(file_path, delimiter, quote_char, escape_char, header, encoding):
     if not file_path:
-        return [], [], "No file available for preview.", "", {}
+        return [], [], "No file available for preview.", "", {}, []
 
     csv_settings = {
         "delimiter": delimiter or ",",
@@ -378,8 +384,24 @@ def show_file_preview(file_path, delimiter, quote_char, escape_char, header, enc
                 }
             
             preview_metadata = f"Showing {len(df)} rows, {len(df.columns)} columns"
-            return df.to_dict("records"), columns, f"File retrieved: {filename}", preview_metadata, tooltip_headers
+            header_conditionals = []
+            for col in df.columns:
+                data_type = data_type = data_types.get(col, "").upper()
+                icon = get_data_type_icon(data_type)
+                icon_path = icon.get('src') if icon else None
+                
+                if icon_path:
+                    header_conditionals.append({
+                        'if': {'column_id': col},
+                        'backgroundImage': f'url({icon_path})',
+                        'backgroundRepeat': 'no-repeat',
+                        'backgroundPosition': '4px center',
+                        'backgroundSize': '20px',
+                        'paddingLeft': '28px'
+                    })
+            
+            return df.to_dict("records"), columns, f"File retrieved: {filename}", preview_metadata, tooltip_headers, header_conditionals
         else:
-            return [], [], "File not found or error processing file.", "", {}
+            return [], [], "File not found or error processing file.", "", {}, []
     except Exception as e:
-        return [], [], f"Error processing file: {str(e)}", "", {}
+        return [], [], f"Error processing file: {str(e)}", "", {}, []
