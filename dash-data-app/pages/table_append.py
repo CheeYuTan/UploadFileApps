@@ -119,9 +119,14 @@ layout = dbc.Container([
                             'if': {'row_index': 'odd'},
                             'backgroundColor': 'rgb(248, 248, 248)'
                         }],
-                        tooltip_header={},  # Will be populated by callback
-                        tooltip_delay=0,
-                        tooltip_duration=None
+                        style_header_conditional=[{
+                            'if': {'column_id': col},
+                            'backgroundImage': f'url({get_data_type_icon(data_type).get("src")})',
+                            'backgroundRepeat': 'no-repeat',
+                            'backgroundPosition': '4px center',
+                            'backgroundSize': '20px',
+                            'paddingLeft': '28px'
+                        } for col, data_type in data_types.items()]
                     )
                 )
             ], id="table-preview-section", style={"display": "none"}),
@@ -275,15 +280,17 @@ def update_table_preview(
             icon = get_data_type_icon(data_type)
             icon_path = icon.get('src') if icon else None
             
+            # Use a simpler column name format
             columns.append({
-                "name": [
-                    {"src": icon_path, "height": "20px", "style": {"marginRight": "5px"}} if icon_path else {},
-                    col
-                ],
+                "name": col,  # Just use the column name
                 "id": col,
                 "type": "numeric" if data_type in ["INT", "FLOAT", "DECIMAL"] else "text"
             })
-            tooltip_headers[col] = f"Type: {data_type}"
+            # Store the data type in tooltip
+            tooltip_headers[col] = {
+                "value": f"Type: {data_type}",
+                "type": "markdown"
+            }
         
         return (
             sample_df.to_dict('records'),
@@ -358,18 +365,17 @@ def show_file_preview(file_path, delimiter, quote_char, escape_char, header, enc
                 else:
                     data_type = "STRING"
                 
-                icon = get_data_type_icon(data_type)
-                icon_path = icon.get('src') if icon else None
-                
+                # Use a simpler column name format
                 columns.append({
-                    "name": [
-                        {"src": icon_path, "height": "20px", "style": {"marginRight": "5px"}} if icon_path else {},
-                        col
-                    ],
+                    "name": col,  # Just use the column name
                     "id": col,
                     "type": "numeric" if data_type in ["INT", "FLOAT", "DECIMAL"] else "text"
                 })
-                tooltip_headers[col] = f"Type: {data_type}"
+                # Store the data type in tooltip
+                tooltip_headers[col] = {
+                    "value": f"Type: {data_type}",
+                    "type": "markdown"
+                }
             
             preview_metadata = f"Showing {len(df)} rows, {len(df.columns)} columns"
             return df.to_dict("records"), columns, f"File retrieved: {filename}", preview_metadata, tooltip_headers
