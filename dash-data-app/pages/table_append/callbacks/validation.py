@@ -13,12 +13,11 @@ from config import DATABRICKS_VOLUME_PATH
      State("table-select", "value"),
      State("column-delimiter", "value"),
      State("quote-character", "value"),
-     State("escape-character", "value"),
      State("header-settings", "value"),
      State("file-encoding", "value")],
     prevent_initial_call=True
 )
-def validate_data(n_clicks, file_path, catalog, schema, table, delimiter, quote_char, escape_char, header, encoding):
+def validate_data(n_clicks, file_path, catalog, schema, table, delimiter, quote_char, header, encoding):
     if not n_clicks or not all([file_path, catalog, schema, table]):
         return "", True
 
@@ -107,12 +106,11 @@ def validate_data(n_clicks, file_path, catalog, schema, table, delimiter, quote_
      State("table-select", "value"),
      State("column-delimiter", "value"),
      State("quote-character", "value"),
-     State("escape-character", "value"),
      State("header-settings", "value"),
      State("file-encoding", "value")],
     prevent_initial_call=True
 )
-def append_data(n_clicks, file_path, catalog, schema, table, delimiter, quote_char, escape_char, header, encoding):
+def append_data(n_clicks, file_path, catalog, schema, table, delimiter, quote_char, header, encoding):
     if not n_clicks:
         return ""
     
