@@ -181,30 +181,30 @@ def load_tables(catalog, schema):
     df = list_tables(catalog, schema)
     return [{"label": table, "value": table} for table in df['tableName'].tolist()], False
 
-def get_data_type_icon(data_type: str) -> html.Img:
-    """Returns the appropriate icon for a given data type"""
+def get_data_type_icon(data_type: str) -> Dict[str, str]:
+    """Returns the appropriate icon path for a given data type"""
     data_type = data_type.upper()
     
     icon_path = "assets/data-types/"
     
     if data_type in ['TINYINT', 'SMALLINT', 'INT', 'BIGINT']:
-        return html.Img(src=icon_path + "Integral_Numeric.png", height="20px", style={"marginRight": "5px"})
+        return {"src": icon_path + "Integral_Numeric.png"}
     elif data_type in ['BINARY']:
-        return html.Img(src=icon_path + "Binary.png", height="20px", style={"marginRight": "5px"})
+        return {"src": icon_path + "Binary.png"}
     elif data_type in ['BOOLEAN']:
-        return html.Img(src=icon_path + "Boolean.png", height="20px", style={"marginRight": "5px"})
+        return {"src": icon_path + "Boolean.png"}
     elif data_type in ['ARRAY', 'MAP', 'STRUCT', 'VARIANT', 'OBJECT']:
-        return html.Img(src=icon_path + "Complex.png", height="20px", style={"marginRight": "5px"})
+        return {"src": icon_path + "Complex.png"}
     elif data_type in ['DATE']:
-        return html.Img(src=icon_path + "Date.png", height="20px", style={"marginRight": "5px"})
+        return {"src": icon_path + "Date.png"}
     elif data_type in ['TIMESTAMP', 'TIMESTAMP_NTZ']:
-        return html.Img(src=icon_path + "Datetime.png", height="20px", style={"marginRight": "5px"})
+        return {"src": icon_path + "Datetime.png"}
     elif data_type in ['DECIMAL']:
-        return html.Img(src=icon_path + "Decimal.png", height="20px", style={"marginRight": "5px"})
+        return {"src": icon_path + "Decimal.png"}
     elif data_type in ['FLOAT', 'DOUBLE']:
-        return html.Img(src=icon_path + "Float.png", height="20px", style={"marginRight": "5px"})
+        return {"src": icon_path + "Float.png"}
     elif data_type in ['STRING']:
-        return html.Img(src=icon_path + "String.png", height="20px", style={"marginRight": "5px"})
+        return {"src": icon_path + "String.png"}
     else:
         return None
 
@@ -241,7 +241,8 @@ def generate_metadata_text(df: pd.DataFrame) -> str:
     [Output("table-preview", "data"),
      Output("table-preview", "columns"),
      Output("table-preview-metadata", "children"),
-     Output("table-preview-section", "style")],
+     Output("table-preview-section", "style"),
+     Output("table-preview", "tooltip_header")],
     [Input("catalog-select", "value"),
      Input("schema-select", "value"),
      Input("table-select", "value")],
@@ -255,9 +256,9 @@ def update_table_preview(
     catalog: Optional[str], 
     schema: Optional[str], 
     table: Optional[str]
-) -> Tuple[List[dict], List[dict], str, dict]:
+) -> Tuple[List[dict], List[dict], str, dict, dict]:
     if not all([catalog, schema, table]):
-        return [], [], "", {"display": "none"}
+        return [], [], "", {"display": "none"}, {}
     
     try:
         # Get sample data and schema
@@ -271,8 +272,14 @@ def update_table_preview(
         
         for col in sample_df.columns:
             data_type = data_types.get(col, "").upper()
+            icon = get_data_type_icon(data_type)
+            icon_path = icon.get('src') if icon else None
+            
             columns.append({
-                "name": f"ⓘ {col}",  # Add an info icon character
+                "name": [
+                    {"src": icon_path, "height": "20px", "style": {"marginRight": "5px"}} if icon_path else {},
+                    col
+                ],
                 "id": col,
                 "type": "numeric" if data_type in ["INT", "FLOAT", "DECIMAL"] else "text"
             })
@@ -282,18 +289,20 @@ def update_table_preview(
             sample_df.to_dict('records'),
             columns,
             f"Showing {len(sample_df)} sample rows",
-            {"display": "block"}
+            {"display": "block"},
+            tooltip_headers
         )
         
     except Exception as e:
         print(f"Error updating table preview: {str(e)}")
-        return [], [], f"Error: {str(e)}", {"display": "none"}
+        return [], [], f"Error: {str(e)}", {"display": "none"}, {}
 
 @callback(
     [Output("file-preview", "data"),
      Output("file-preview", "columns"),
      Output("file-info", "children"),
-     Output("file-preview-metadata", "children")],
+     Output("file-preview-metadata", "children"),
+     Output("file-preview", "tooltip_header")],
     [Input("file-path", "data"),
      Input("column-delimiter", "value"),
      Input("quote-character", "value"),
@@ -304,7 +313,7 @@ def update_table_preview(
 )
 def show_file_preview(file_path, delimiter, quote_char, escape_char, header, encoding):
     if not file_path:
-        return [], [], "No file available for preview.", ""
+        return [], [], "No file available for preview.", "", {}
 
     csv_settings = {
         "delimiter": delimiter or ",",
@@ -340,30 +349,31 @@ def show_file_preview(file_path, delimiter, quote_char, escape_char, header, enc
                 if len(sample_values) > 0:
                     if pd.api.types.is_numeric_dtype(sample_values):
                         data_type = "FLOAT" if all(sample_values.astype(str).str.contains('\.').fillna(False)) else "INT"
-                        col_type = "numeric"
                     elif pd.api.types.is_datetime64_any_dtype(sample_values):
                         data_type = "TIMESTAMP"
-                        col_type = "text"
                     elif pd.api.types.is_bool_dtype(sample_values):
                         data_type = "BOOLEAN"
-                        col_type = "text"
                     else:
                         data_type = "STRING"
-                        col_type = "text"
                 else:
                     data_type = "STRING"
-                    col_type = "text"
+                
+                icon = get_data_type_icon(data_type)
+                icon_path = icon.get('src') if icon else None
                 
                 columns.append({
-                    "name": f"ⓘ {col}",
+                    "name": [
+                        {"src": icon_path, "height": "20px", "style": {"marginRight": "5px"}} if icon_path else {},
+                        col
+                    ],
                     "id": col,
-                    "type": col_type
+                    "type": "numeric" if data_type in ["INT", "FLOAT", "DECIMAL"] else "text"
                 })
                 tooltip_headers[col] = f"Type: {data_type}"
             
             preview_metadata = f"Showing {len(df)} rows, {len(df.columns)} columns"
-            return df.to_dict("records"), columns, f"File retrieved: {filename}", preview_metadata
+            return df.to_dict("records"), columns, f"File retrieved: {filename}", preview_metadata, tooltip_headers
         else:
-            return [], [], "File not found or error processing file.", ""
+            return [], [], "File not found or error processing file.", "", {}
     except Exception as e:
-        return [], [], f"Error processing file: {str(e)}", ""
+        return [], [], f"Error processing file: {str(e)}", "", {}
