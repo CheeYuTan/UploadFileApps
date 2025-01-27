@@ -67,12 +67,9 @@ layout = dbc.Container([
                 'if': {'row_index': 'odd'},
                 'backgroundColor': 'rgb(248, 248, 248)'
             }],
-            tooltip_data=[],  # Will be populated by callback
-            tooltip_duration=None,  # Show tooltip until hover off
-            css=[{
-                'selector': '.dash-table-tooltip',
-                'rule': 'background-color: white; font-size: 12px; padding: 5px;'
-            }]
+            tooltip_header={},  # Will be populated by callback
+            tooltip_delay=0,
+            tooltip_duration=None
         )
     ),
 
@@ -122,12 +119,9 @@ layout = dbc.Container([
                             'if': {'row_index': 'odd'},
                             'backgroundColor': 'rgb(248, 248, 248)'
                         }],
-                        tooltip_data=[],
-                        tooltip_duration=None,
-                        css=[{
-                            'selector': '.dash-table-tooltip',
-                            'rule': 'background-color: white; font-size: 12px; padding: 5px;'
-                        }]
+                        tooltip_header={},  # Will be populated by callback
+                        tooltip_delay=0,
+                        tooltip_duration=None
                     )
                 )
             ], id="table-preview-section", style={"display": "none"}),
@@ -273,14 +267,16 @@ def update_table_preview(
         
         # Create columns with tooltips
         columns = []
+        tooltip_headers = {}
+        
         for col in sample_df.columns:
             data_type = data_types.get(col, "").upper()
             columns.append({
                 "name": f"ⓘ {col}",  # Add an info icon character
                 "id": col,
-                "type": "numeric" if data_type in ["INT", "FLOAT", "DECIMAL"] else "text",
-                "tooltip": f"Type: {data_type}"  # Add tooltip directly to column
+                "type": "numeric" if data_type in ["INT", "FLOAT", "DECIMAL"] else "text"
             })
+            tooltip_headers[col] = f"Type: {data_type}"
         
         return (
             sample_df.to_dict('records'),
@@ -336,6 +332,8 @@ def show_file_preview(file_path, delimiter, quote_char, escape_char, header, enc
             
             # Create columns with inferred types
             columns = []
+            tooltip_headers = {}
+            
             for col in df.columns:
                 # Infer data type
                 sample_values = df[col].dropna()
@@ -359,9 +357,9 @@ def show_file_preview(file_path, delimiter, quote_char, escape_char, header, enc
                 columns.append({
                     "name": f"ⓘ {col}",
                     "id": col,
-                    "type": col_type,
-                    "tooltip": f"Type: {data_type}"  # Add tooltip directly to column
+                    "type": col_type
                 })
+                tooltip_headers[col] = f"Type: {data_type}"
             
             preview_metadata = f"Showing {len(df)} rows, {len(df.columns)} columns"
             return df.to_dict("records"), columns, f"File retrieved: {filename}", preview_metadata
