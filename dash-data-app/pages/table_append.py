@@ -12,6 +12,9 @@ from dbutils import (
 )
 from config import DATABRICKS_VOLUME_PATH
 from components.csv_settings import get_csv_settings_modal
+import os
+
+os.makedirs("./cache", exist_ok=True)
 
 dash.register_page(__name__, path="/append-table")
 
