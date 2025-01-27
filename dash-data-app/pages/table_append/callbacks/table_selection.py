@@ -57,11 +57,24 @@ def update_table_preview(catalog, schema, table):
         # Get sample data
         sample_df = get_sample_data(catalog, schema, table, limit=10)
         
+        # Convert complex types to strings
+        for col in sample_df.columns:
+            if isinstance(sample_df[col].iloc[0], (list, dict)) or 'array' in str(sample_df[col].dtype).lower():
+                sample_df[col] = sample_df[col].apply(str)
+        
         # Create simple columns
         columns = [{"name": col, "id": col} for col in sample_df.columns]
         
-        # Convert DataFrame to records
-        records = sample_df.replace({pd.NA: None}).to_dict('records')
+        # Convert DataFrame to records and ensure all values are of valid types
+        records = []
+        for record in sample_df.replace({pd.NA: None}).to_dict('records'):
+            clean_record = {}
+            for key, value in record.items():
+                if isinstance(value, (str, int, float, bool)) or value is None:
+                    clean_record[key] = value
+                else:
+                    clean_record[key] = str(value)
+            records.append(clean_record)
         
         return (
             records,
