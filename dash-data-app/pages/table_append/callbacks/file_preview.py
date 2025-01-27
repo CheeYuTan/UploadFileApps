@@ -11,12 +11,11 @@ from config import DATABRICKS_VOLUME_PATH
     [Input("file-path", "data"),
      Input("column-delimiter", "value"),
      Input("quote-character", "value"),
-     Input("escape-character", "value"),
      Input("header-settings", "value"),
      Input("file-encoding", "value")],
     prevent_initial_call=True
 )
-def show_file_preview(file_path, delimiter, quote_char, escape_char, header, encoding):
+def show_file_preview(file_path, delimiter, quote_char, header, encoding):
     if not file_path:
         return [], [], "No file available for preview.", ""
 
