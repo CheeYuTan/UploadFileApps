@@ -126,14 +126,13 @@ def show_file_preview(file_path, delimiter, quote_char, escape_char, header, enc
             columns = []
             tooltip_headers = {}
             header_conditionals = []
-            
-            # Create a dictionary of column data types
             data_types = {}
+            
+            # First pass: infer data types
             for col in df.columns:
-                # Infer data type from the column
                 data_types[col] = infer_column_type(df[col])
             
-            # Create columns and tooltips
+            # Second pass: create columns, tooltips, and header conditionals
             for col in df.columns:
                 data_type = data_types[col]
                 icon = get_data_type_icon(data_type)
@@ -151,7 +150,14 @@ def show_file_preview(file_path, delimiter, quote_char, escape_char, header, enc
                 }
                 
                 if icon_path:
-                    header_conditionals.append(create_header_conditional(col, icon_path))
+                    header_conditionals.append({
+                        'if': {'column_id': col},
+                        'backgroundImage': f'url({icon_path})',
+                        'backgroundRepeat': 'no-repeat',
+                        'backgroundPosition': '4px center',
+                        'backgroundSize': '20px',
+                        'paddingLeft': '28px'
+                    })
             
             preview_metadata = f"Showing {len(df)} rows, {len(df.columns)} columns"
             return (
