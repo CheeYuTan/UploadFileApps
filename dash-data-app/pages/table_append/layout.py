@@ -1,8 +1,9 @@
 import dash_bootstrap_components as dbc
 from dash import html, dcc
+from .components.file_preview import get_file_preview_section
+from .components.table_selection import get_table_selection_section
+from .components.validation import get_validation_section
 from components.csv_settings import get_csv_settings_modal
-from .data_preview import get_file_preview_section
-from .table_selection import get_table_selection_section
 
 def get_layout():
     return dbc.Container([
@@ -26,8 +27,8 @@ def get_layout():
         # Table selection section
         get_table_selection_section(),
         
-        # Action buttons
-        dbc.Button("Confirm and Append Data", id="confirm-append", color="success", className="mt-3"),
+        # Validation section
+        get_validation_section(),
         
         # Storage
         dcc.Store(id="file-path", storage_type="session"),
