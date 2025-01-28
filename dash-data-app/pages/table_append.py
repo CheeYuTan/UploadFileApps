@@ -319,7 +319,7 @@ def show_file_preview(file_path, delimiter, quote_char, header, encoding):
 
 @callback(
     [Output("validation-results", "children"),
-     Output("confirm-append", "disabled"),
+     Output("confirm-append", "disabled", allow_duplicate=True),
      Output("validation-state", "data")],
     Input("validate-data", "n_clicks"),
     [State("file-path", "data"),
@@ -467,7 +467,7 @@ def validate_data(n_clicks, file_path, catalog, schema, table, delimiter, quote_
      State("validation-state", "data")],
     prevent_initial_call=True,
     running=[
-        (Output("confirm-append", "disabled"), True, False),
+        (Output("confirm-append", "disabled", allow_duplicate=True), True, False),
         (Output("confirm-append", "children"),
          html.Div([
              dbc.Spinner(size="sm", color="light"),
