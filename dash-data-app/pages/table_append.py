@@ -228,18 +228,20 @@ def load_tables(catalog, schema):
     [Output("table-preview", "data"),
      Output("table-preview", "columns"),
      Output("table-preview-metadata", "children"),
-     Output("table-preview-section", "style")],
+     Output("table-preview-section", "style"),
+     Output("confirm-append", "disabled")],
     [Input("catalog-select", "value"),
      Input("schema-select", "value"),
-     Input("table-select", "value")],
+     Input("table-select", "value"),
+     Input("validation-state", "data")],
     background=True,
     running=[
         (Output("table-preview", "style"), {"opacity": "0.5"}, {"opacity": "1"}),
     ]
 )
-def update_table_preview(catalog, schema, table):
+def update_table_preview(catalog, schema, table, is_validated):
     if not all([catalog, schema, table]):
-        return [], [], "", {"display": "none"}
+        return [], [], "", {"display": "none"}, True
     
     try:
         # Get sample data
@@ -252,12 +254,13 @@ def update_table_preview(catalog, schema, table):
             sample_df.to_dict('records'),
             columns,
             f"Showing {len(sample_df)} sample rows, {len(sample_df.columns)} columns",
-            {"display": "block"}
+            {"display": "block"},
+            not is_validated  # Disable append button unless validation passed
         )
         
     except Exception as e:
         print(f"Error updating table preview: {str(e)}")
-        return [], [], f"Error: {str(e)}", {"display": "none"}
+        return [], [], f"Error: {str(e)}", {"display": "none"}, True
 
 @callback(
     [Output("file-preview", "data"),
@@ -554,10 +557,3 @@ def toggle_validate_button(catalog, schema, table, preview_data):
 )
 def close_success_modal(n_clicks):
     return False
-
-@callback(
-    Output("confirm-append", "disabled"),
-    Input("validation-state", "data")
-)
-def toggle_append_button(is_validated):
-    return not is_validated
