@@ -235,7 +235,6 @@ def load_tables(catalog, schema):
     background=True,
     running=[
         (Output("table-preview", "style"), {"opacity": "0.5"}, {"opacity": "1"}),
-        (Output("confirm-append", "disabled"), True, False)
     ]
 )
 def update_table_preview(catalog, schema, table):
@@ -498,17 +497,12 @@ def append_data(n_clicks, file_path, catalog, schema, table, delimiter, quote_ch
             "encoding": encoding or "utf-8"
         }
         
-        # Show initial status
-        status_div = html.Div([
-            html.H6("Append Operation Status:", className="mt-3 mb-3"),
-            html.Div(id="append-progress", className="ms-3")
-        ])
-        
-        # Read the file
+        # Read the file to get total rows
         df = read_file_from_volume(
             DATABRICKS_VOLUME_PATH,
             file_path.split("/")[-1],
-            **csv_settings
+            **csv_settings,
+            limit=None  # Read all rows
         )
         
         if '_rescued_data' in df.columns:
@@ -517,12 +511,17 @@ def append_data(n_clicks, file_path, catalog, schema, table, delimiter, quote_ch
         # Get the total number of rows
         total_rows = len(df)
         
-        # Insert the data (you'll need to implement this in dbutils.py)
+        # Insert the data with all necessary parameters
         insert_data_to_table(
             catalog=catalog,
             schema=schema,
             table=table,
-            data=df
+            data=df,
+            file_path=file_path,
+            header=csv_settings["header"],
+            delimiter=csv_settings["delimiter"],
+            quote_char=csv_settings["quote_char"],
+            encoding=csv_settings["encoding"]
         )
         
         success_message = f"Successfully inserted {total_rows:,} rows into {catalog}.{schema}.{table}"
@@ -555,3 +554,10 @@ def toggle_validate_button(catalog, schema, table, preview_data):
 )
 def close_success_modal(n_clicks):
     return False
+
+@callback(
+    Output("confirm-append", "disabled"),
+    Input("validation-state", "data")
+)
+def toggle_append_button(is_validated):
+    return not is_validated
