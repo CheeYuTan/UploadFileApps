@@ -47,8 +47,8 @@ layout = dbc.Container([
      Output("upload-status", "children"),
      Output("file-path", "data"),
      Output("upload-progress", "children")],
-    Input("file-upload", "contents"),
-    State("file-upload", "filename"),
+    Input("upload-data", "contents"),
+    State("upload-data", "filename"),
     prevent_initial_call=True
 )
 def handle_file_upload(
@@ -82,10 +82,10 @@ def handle_file_upload(
         )
 
     # Validate file extension
-    if not filename.lower().endswith(('.csv', '.tsv')):
+    if not filename.lower().endswith('.csv'):
         return (
             "/",
-            html.P("Invalid file format. Please upload a CSV or TSV file.", className="text-danger"),
+            html.P("Invalid file format. Please upload a CSV file.", className="text-danger"),
             None,
             ""
         )
@@ -115,6 +115,7 @@ def handle_file_upload(
         )
 
     except Exception as e:
+        print(f"Upload error: {str(e)}")
         return (
             "/",
             html.P(f"Error: {str(e)}", className="text-danger"),
