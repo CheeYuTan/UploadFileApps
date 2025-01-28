@@ -514,8 +514,8 @@ def append_data(n_clicks, file_path, catalog, schema, table, delimiter, quote_ch
         # Get the total number of rows
         total_rows = len(df)
         
-        # Insert the data with all necessary parameters
-        insert_data_to_table(
+        # Insert the data and get rows inserted
+        rows_inserted = insert_data_to_table(
             catalog=catalog,
             schema=schema,
             table=table,
@@ -527,7 +527,10 @@ def append_data(n_clicks, file_path, catalog, schema, table, delimiter, quote_ch
             encoding=csv_settings["encoding"]
         )
         
-        success_message = f"Successfully inserted {total_rows:,} rows into {catalog}.{schema}.{table}"
+        success_message = (
+            f"Successfully inserted {rows_inserted:,} rows into {catalog}.{schema}.{table}. "
+            f"Click 'Upload Another' to process another file or 'Close' to stay on this page."
+        )
         return "", {"display": "none"}, True, success_message
         
     except Exception as e:

@@ -147,17 +147,21 @@ def read_file_from_volume(volume_path: str, file_name: str, delimiter: str = ","
         print(f"Error reading file from volume: {str(e)}")
         return pd.DataFrame()
 
-def insert_data_to_table(catalog: str, schema: str, table: str, data: pd.DataFrame, file_path: str, header: bool = True, delimiter: str = ",", quote_char: str = '"', encoding: str = "utf-8") -> None:
-    """Insert data into a Databricks table."""
+def insert_data_to_table(catalog: str, schema: str, table: str, data: pd.DataFrame, file_path: str, header: bool = True, delimiter: str = ",", quote_char: str = '"', encoding: str = "utf-8") -> int:
+    """
+    Insert data into a Databricks table.
+    
+    Returns:
+        int: Number of rows inserted
+    """
     try:
-        # Get the column names from the DataFrame
-        columns = list(data.columns)
-        columns_str = ", ".join(columns)
+        # First, get the count of rows before insert
+        count_before = sqlQuery(f"SELECT COUNT(*) as count FROM {catalog}.{schema}.{table}").iloc[0]['count']
         
-        # Construct the insert query
+        # Construct the insert query with proper syntax
         insert_query = f"""
-            INSERT INTO {catalog}.{schema}.{table} ({columns_str})
-            SELECT {columns_str}
+            INSERT INTO {catalog}.{schema}.{table}
+            SELECT * EXCEPT(_rescued_data) 
             FROM read_files(
                 '{file_path}',
                 format => 'csv',
@@ -168,8 +172,16 @@ def insert_data_to_table(catalog: str, schema: str, table: str, data: pd.DataFra
             )
         """
         
-        # Execute using existing sqlQuery function
+        # Execute the insert
         sqlQuery(insert_query)
+        
+        # Get the count after insert
+        count_after = sqlQuery(f"SELECT COUNT(*) as count FROM {catalog}.{schema}.{table}").iloc[0]['count']
+        
+        # Calculate rows inserted
+        rows_inserted = count_after - count_before
+        
+        return rows_inserted
             
     except Exception as e:
         print(f"Error in insert_data_to_table: {str(e)}")
