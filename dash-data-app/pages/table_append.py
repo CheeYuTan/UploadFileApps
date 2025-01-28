@@ -8,7 +8,8 @@ from dbutils import (
     list_schemas, 
     list_tables,
     describe_table,
-    get_sample_data
+    get_sample_data,
+    insert_data_to_table
 )
 from config import DATABRICKS_VOLUME_PATH
 from components.csv_settings import get_csv_settings_modal
@@ -425,18 +426,79 @@ def validate_data(n_clicks, file_path, catalog, schema, table, delimiter, quote_
      State("quote-character", "value"),
      State("header-settings", "value"),
      State("file-encoding", "value")],
-    prevent_initial_call=True
+    prevent_initial_call=True,
+    # Add loading states
+    running=[
+        (Output("confirm-append", "disabled"), True, False),
+        (Output("confirm-append", "children"),
+         [
+             dbc.Spinner(size="sm", color="light", className="me-2"),
+             f"Inserting data..."
+         ],
+         "Confirm and Append Data")
+    ]
 )
 def append_data(n_clicks, file_path, catalog, schema, table, delimiter, quote_char, header, encoding):
     if not n_clicks:
         return ""
     
     try:
-        # TODO: Implement the actual append logic here
-        # This should call your Databricks SQL connector to append the data
-        return html.Div("Data appended successfully!", className="text-success")
+        # Read the file with settings
+        csv_settings = {
+            "delimiter": delimiter or ",",
+            "quote_char": quote_char or '"',
+            "header": header if header is not None else True,
+            "encoding": encoding or "utf-8"
+        }
+        
+        # Show initial status
+        status_div = html.Div([
+            html.H6("Append Operation Status:", className="mt-3 mb-3"),
+            html.Div(id="append-progress", className="ms-3")
+        ])
+        
+        # Read the file
+        df = read_file_from_volume(
+            DATABRICKS_VOLUME_PATH,
+            file_path.split("/")[-1],
+            **csv_settings
+        )
+        
+        if '_rescued_data' in df.columns:
+            df = df.drop('_rescued_data', axis=1)
+        
+        # Get the total number of rows
+        total_rows = len(df)
+        
+        # Insert the data (you'll need to implement this in dbutils.py)
+        insert_data_to_table(
+            catalog=catalog,
+            schema=schema,
+            table=table,
+            data=df
+        )
+        
+        # Return success message with details
+        return html.Div([
+            html.Div([
+                html.I(className="fas fa-check-circle me-2"),
+                f"Successfully inserted {total_rows:,} rows into {catalog}.{schema}.{table}"
+            ], className="text-success"),
+            html.Div([
+                html.I(className="fas fa-info-circle me-2"),
+                "You can now close this page or upload another file."
+            ], className="text-muted mt-2 small")
+        ])
+        
     except Exception as e:
-        return html.Div(f"Error appending data: {str(e)}", className="text-danger")
+        print(f"Error appending data: {str(e)}")
+        return html.Div([
+            html.Div([
+                html.I(className="fas fa-exclamation-circle me-2"),
+                "Error appending data:"
+            ], className="text-danger fw-bold"),
+            html.Div(str(e), className="text-danger ms-4 mt-2")
+        ])
 
 @callback(
     Output("validate-data", "disabled"),
