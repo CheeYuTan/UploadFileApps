@@ -148,38 +148,28 @@ def read_file_from_volume(volume_path: str, file_name: str, delimiter: str = ","
         return pd.DataFrame()
 
 def insert_data_to_table(catalog: str, schema: str, table: str, data: pd.DataFrame) -> None:
-    """Insert data into a Databricks table.
-    
-    Args:
-        catalog: Target catalog name
-        schema: Target schema name
-        table: Target table name
-        data: DataFrame containing the data to insert
-    """
+    """Insert data into a Databricks table."""
     try:
-        # Get the connection
-        with get_connection() as conn:
-            # Create a temporary view of the data
-            temp_view_name = f"temp_view_{int(time.time())}"
-            data.createOrReplaceTempView(temp_view_name)
-            
-            # Construct the insert query
-            columns = ", ".join(data.columns)
-            insert_query = f"""
-                INSERT INTO {catalog}.{schema}.{table} ({columns})
-                SELECT {columns} FROM {temp_view_name}
-            """
-            
-            # Execute the insert
-            conn.execute(insert_query)
+        # Convert DataFrame to SQL insert
+        columns = ", ".join(data.columns)
+        placeholders = ", ".join(["%s"] * len(data.columns))
+        
+        # Construct the insert query
+        insert_query = f"""
+            INSERT INTO {catalog}.{schema}.{table} ({columns})
+            SELECT * FROM read_files(
+                '{DATABRICKS_VOLUME_PATH}/{filename}',
+                format => 'csv',
+                header => {str(header).lower()},
+                delimiter => '{delimiter}',
+                quote => '{quote_char}',
+                charset => '{encoding}'
+            )
+        """
+        
+        # Execute using existing sqlQuery function
+        sqlQuery(insert_query)
             
     except Exception as e:
         print(f"Error in insert_data_to_table: {str(e)}")
         raise Exception(f"Failed to insert data: {str(e)}")
-    finally:
-        # Clean up the temp view if it exists
-        try:
-            with get_connection() as conn:
-                conn.execute(f"DROP VIEW IF EXISTS {temp_view_name}")
-        except:
-            pass

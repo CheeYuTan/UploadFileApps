@@ -141,7 +141,42 @@ layout = dbc.Container([
     html.Div(id="validation-results", className="mt-3"),
 
     dcc.Store(id="file-path", storage_type="session"),
-    dcc.Store(id="csv-settings", storage_type="session")
+    dcc.Store(id="csv-settings", storage_type="session"),
+    dcc.Store(id="validation-state", data=False),
+
+    # Update the layout to include a modal for success message
+    dbc.Modal([
+        dbc.ModalHeader("Success"),
+        dbc.ModalBody([
+            html.I(className="fas fa-check-circle me-2 text-success"),
+            html.Span(id="success-message"),
+            html.Hr(),
+            html.P("Would you like to upload another file?", className="mb-0")
+        ]),
+        dbc.ModalFooter([
+            dbc.Button("Upload Another", href="/", color="primary"),
+            dbc.Button("Close", id="close-success-modal", className="ms-2")
+        ])
+    ], id="success-modal", is_open=False),
+
+    # Add loading overlay for append operation
+    dbc.Spinner(
+        html.Div(
+            id="append-overlay",
+            style={
+                "position": "fixed",
+                "top": 0,
+                "left": 0,
+                "right": 0,
+                "bottom": 0,
+                "backgroundColor": "rgba(0, 0, 0, 0.5)",
+                "zIndex": 1000,
+                "display": "none"
+            }
+        ),
+        color="primary",
+        fullscreen=True,
+    )
 ], fluid=True)
 
 @callback(
@@ -282,7 +317,8 @@ def show_file_preview(file_path, delimiter, quote_char, header, encoding):
 
 @callback(
     [Output("validation-results", "children"),
-     Output("confirm-append", "disabled")],
+     Output("confirm-append", "disabled"),
+     Output("validation-state", "data")],
     Input("validate-data", "n_clicks"),
     [State("file-path", "data"),
      State("catalog-select", "value"),
@@ -293,17 +329,14 @@ def show_file_preview(file_path, delimiter, quote_char, header, encoding):
      State("header-settings", "value"),
      State("file-encoding", "value")],
     prevent_initial_call=True,
-    # Add loading states
     running=[
         (Output("validate-data", "disabled"), True, False),
-        (Output("validate-data", "children"), 
-         "Validating...", 
-         "Validate Data")
+        (Output("validate-data", "children"), "Validating...", "Validate Data")
     ]
 )
 def validate_data(n_clicks, file_path, catalog, schema, table, delimiter, quote_char, header, encoding):
     if not n_clicks or not all([file_path, catalog, schema, table]):
-        return "", True
+        return "", True, False
 
     try:
         validation_results = []
@@ -323,7 +356,7 @@ def validate_data(n_clicks, file_path, catalog, schema, table, delimiter, quote_
                 html.Div("❌ Invalid file type. Only CSV files are supported.", 
                         className="text-danger mb-2")
             )
-            return html.Div(validation_results), True
+            return html.Div(validation_results), True, False
 
         # Read the file
         csv_settings = {
@@ -398,14 +431,14 @@ def validate_data(n_clicks, file_path, catalog, schema, table, delimiter, quote_
                 ], className="text-danger mb-2")
                 for error in validation_errors
             ])
-            return html.Div(validation_results), True
+            return html.Div(validation_results), True, False
         else:
             return html.Div([
                 html.Div([
                     html.I(className="fas fa-check-circle me-2"),
                     "Validation successful!"
                 ], className="text-success")
-            ]), False
+            ]), False, True
 
     except Exception as e:
         return html.Div([
@@ -413,10 +446,13 @@ def validate_data(n_clicks, file_path, catalog, schema, table, delimiter, quote_
                 html.I(className="fas fa-exclamation-circle me-2"),
                 f"Error during validation: {str(e)}"
             ], className="text-danger")
-        ]), True
+        ]), True, False
 
 @callback(
-    Output("processing-status", "children"),
+    [Output("processing-status", "children"),
+     Output("append-overlay", "style"),
+     Output("success-modal", "is_open"),
+     Output("success-message", "children")],
     Input("confirm-append", "n_clicks"),
     [State("file-path", "data"),
      State("catalog-select", "value"),
@@ -425,9 +461,9 @@ def validate_data(n_clicks, file_path, catalog, schema, table, delimiter, quote_
      State("column-delimiter", "value"),
      State("quote-character", "value"),
      State("header-settings", "value"),
-     State("file-encoding", "value")],
+     State("file-encoding", "value"),
+     State("validation-state", "data")],
     prevent_initial_call=True,
-    # Update loading states
     running=[
         (Output("confirm-append", "disabled"), True, False),
         (Output("confirm-append", "children"),
@@ -438,9 +474,20 @@ def validate_data(n_clicks, file_path, catalog, schema, table, delimiter, quote_
          "Confirm and Append Data")
     ]
 )
-def append_data(n_clicks, file_path, catalog, schema, table, delimiter, quote_char, header, encoding):
-    if not n_clicks:
-        return ""
+def append_data(n_clicks, file_path, catalog, schema, table, delimiter, quote_char, header, encoding, is_validated):
+    if not n_clicks or not is_validated:
+        return "", {"display": "none"}, False, ""
+    
+    overlay_style = {
+        "position": "fixed",
+        "top": 0,
+        "left": 0,
+        "right": 0,
+        "bottom": 0,
+        "backgroundColor": "rgba(0, 0, 0, 0.5)",
+        "zIndex": 1000,
+        "display": "block"
+    }
     
     try:
         # Read the file with settings
@@ -478,17 +525,8 @@ def append_data(n_clicks, file_path, catalog, schema, table, delimiter, quote_ch
             data=df
         )
         
-        # Return success message with details
-        return html.Div([
-            html.Div([
-                html.I(className="fas fa-check-circle me-2"),
-                f"Successfully inserted {total_rows:,} rows into {catalog}.{schema}.{table}"
-            ], className="text-success"),
-            html.Div([
-                html.I(className="fas fa-info-circle me-2"),
-                "You can now close this page or upload another file."
-            ], className="text-muted mt-2 small")
-        ])
+        success_message = f"Successfully inserted {total_rows:,} rows into {catalog}.{schema}.{table}"
+        return "", {"display": "none"}, True, success_message
         
     except Exception as e:
         print(f"Error appending data: {str(e)}")
@@ -498,13 +536,22 @@ def append_data(n_clicks, file_path, catalog, schema, table, delimiter, quote_ch
                 "Error appending data:"
             ], className="text-danger fw-bold"),
             html.Div(str(e), className="text-danger ms-4 mt-2")
-        ])
+        ]), {"display": "none"}, False, ""
 
 @callback(
     Output("validate-data", "disabled"),
     [Input("catalog-select", "value"),
      Input("schema-select", "value"),
-     Input("table-select", "value")]
+     Input("table-select", "value"),
+     Input("table-preview", "data")]
 )
-def toggle_validate_button(catalog, schema, table):
-    return not all([catalog, schema, table])
+def toggle_validate_button(catalog, schema, table, preview_data):
+    return not (all([catalog, schema, table]) and preview_data)
+
+@callback(
+    Output("success-modal", "is_open", allow_duplicate=True),
+    Input("close-success-modal", "n_clicks"),
+    prevent_initial_call=True
+)
+def close_success_modal(n_clicks):
+    return False
