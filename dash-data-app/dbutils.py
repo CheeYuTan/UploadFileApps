@@ -150,14 +150,15 @@ def read_file_from_volume(volume_path: str, file_name: str, delimiter: str = ","
 def insert_data_to_table(catalog: str, schema: str, table: str, data: pd.DataFrame, file_path: str, header: bool = True, delimiter: str = ",", quote_char: str = '"', encoding: str = "utf-8") -> None:
     """Insert data into a Databricks table."""
     try:
-        # Get just the filename from the path
-        filename = file_path.split("/")[-1]
+        # Get the column names from the DataFrame
+        columns = list(data.columns)
+        columns_str = ", ".join(columns)
         
-        # Construct the insert query using read_files
-        columns = ", ".join(data.columns)
+        # Construct the insert query
         insert_query = f"""
-            INSERT INTO {catalog}.{schema}.{table} ({columns})
-            SELECT {columns} FROM read_files(
+            INSERT INTO {catalog}.{schema}.{table} ({columns_str})
+            SELECT {columns_str}
+            FROM read_files(
                 '{file_path}',
                 format => 'csv',
                 header => {str(header).lower()},
