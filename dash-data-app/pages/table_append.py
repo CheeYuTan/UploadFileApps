@@ -427,14 +427,14 @@ def validate_data(n_clicks, file_path, catalog, schema, table, delimiter, quote_
      State("header-settings", "value"),
      State("file-encoding", "value")],
     prevent_initial_call=True,
-    # Add loading states
+    # Update loading states
     running=[
         (Output("confirm-append", "disabled"), True, False),
         (Output("confirm-append", "children"),
-         [
-             dbc.Spinner(size="sm", color="light", className="me-2"),
-             f"Inserting data..."
-         ],
+         html.Div([
+             dbc.Spinner(size="sm", color="light"),
+             html.Span("Inserting data...", className="ms-2")
+         ]),
          "Confirm and Append Data")
     ]
 )
