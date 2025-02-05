@@ -30,6 +30,42 @@ def get_layout():
         # Validation section
         get_validation_section(),
         
+        # Add loading spinner and status alert
+        dbc.Row([
+            dbc.Col([
+                # Loading spinner for append operation
+                dbc.Spinner(
+                    html.Div(id="loading-append"),
+                    color="primary",
+                    type="border",
+                    fullscreen=True,  # Makes it center on screen
+                    fullscreen_style={"backgroundColor": "rgba(0, 0, 0, 0.3)"}  # Semi-transparent overlay
+                ),
+                # Status alert for success/error messages
+                dbc.Collapse(
+                    id="append-status",
+                    is_open=False,
+                    className="mt-3"
+                )
+            ])
+        ]),
+        
+        # Confirm append button
+        dbc.Row([
+            dbc.Col([
+                dbc.Button(
+                    [
+                        html.I(className="bi bi-cloud-upload me-2"),  # Upload icon
+                        "Confirm and Append Data"
+                    ],
+                    id="confirm-append",
+                    color="primary",
+                    className="mt-3",
+                    disabled=False
+                )
+            ], className="text-center")
+        ]),
+        
         # Storage
         dcc.Store(id="file-path", storage_type="session"),
         dcc.Store(id="csv-settings", storage_type="session")

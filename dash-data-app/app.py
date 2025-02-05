@@ -11,7 +11,10 @@ long_callback_manager = DiskcacheLongCallbackManager(cache)
 app = Dash(
     __name__,
     use_pages=True,
-    external_stylesheets=[dbc.themes.BOOTSTRAP],
+    external_stylesheets=[
+        dbc.themes.BOOTSTRAP,
+        "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css"
+    ],
     long_callback_manager=long_callback_manager
 )
 
