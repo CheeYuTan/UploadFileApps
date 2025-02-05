@@ -1,4 +1,4 @@
-from dash import callback, Input, Output
+from dash import callback, Input, Output, State
 import pandas as pd
 from dbutils import read_file_from_volume
 from config import DATABRICKS_VOLUME_PATH
@@ -13,17 +13,22 @@ from config import DATABRICKS_VOLUME_PATH
      Input("quote-character", "value"),
      Input("header-settings", "value"),
      Input("file-encoding", "value")],
-    prevent_initial_call=True
+    [State("column-delimiter", "value"),
+     State("quote-character", "value"),
+     State("header-settings", "value"),
+     State("file-encoding", "value")],
+    prevent_initial_call=False
 )
-def show_file_preview(file_path, delimiter, quote_char, header, encoding):
+def show_file_preview(file_path, delimiter, quote_char, header, encoding,
+                     default_delimiter, default_quote_char, default_header, default_encoding):
     if not file_path:
         return [], [], "No file available for preview.", ""
 
     csv_settings = {
-        "delimiter": delimiter or ",",
-        "quote_char": quote_char or '"',
-        "header": header if header is not None else True,
-        "encoding": encoding or "utf-8"
+        "delimiter": delimiter or default_delimiter or ",",
+        "quote_char": quote_char or default_quote_char or '"',
+        "header": header if header is not None else True if default_header is None else default_header,
+        "encoding": encoding or default_encoding or "utf-8"
     }
 
     filename = file_path.split("/")[-1]
