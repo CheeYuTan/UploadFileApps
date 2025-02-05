@@ -35,11 +35,22 @@ def get_layout():
             dbc.Col([
                 # Loading spinner for append operation
                 dbc.Spinner(
-                    html.Div(id="loading-append"),
+                    dbc.Modal([
+                        dbc.ModalBody([
+                            html.Div([
+                                html.H4("Uploading data...", className="mb-3"),
+                                html.P("Please wait while we append the data to your table.", className="text-muted"),
+                                html.Div(id="loading-append")
+                            ], className="text-center")
+                        ])
+                    ],
+                    id="loading-modal",
+                    is_open=False,
+                    centered=True,
+                    backdrop="static",  # Prevents closing by clicking outside
+                ),
                     color="primary",
                     type="border",
-                    fullscreen=True,  # Makes it center on screen
-                    fullscreen_style={"backgroundColor": "rgba(0, 0, 0, 0.3)"}  # Semi-transparent overlay
                 ),
                 # Status alert for success/error messages
                 dbc.Collapse(
