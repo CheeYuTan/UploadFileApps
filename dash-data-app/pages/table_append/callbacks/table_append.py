@@ -1,6 +1,7 @@
 from dash import callback, Input, Output, State, html
 import dash_bootstrap_components as dbc
 from dbutils import insert_data_to_table
+from dash.long_callback import DiskcacheLongCallback
 
 @callback(
     [Output("append-status", "children"),
@@ -12,27 +13,20 @@ from dbutils import insert_data_to_table
      State("schema-select", "value"),
      State("table-select", "value"),
      State("file-path", "data")],
-    prevent_initial_call=True
+    prevent_initial_call=True,
+    running=[
+        (Output("loading-overlay", "style"), 
+         {"display": "flex", "position": "fixed", "top": 0, "left": 0, "right": 0, "bottom": 0, 
+          "alignItems": "center", "justifyContent": "center", "backgroundColor": "rgba(0, 0, 0, 0.5)", "zIndex": 1050},
+         {"display": "none"}),
+        (Output("confirm-append", "disabled"), True, False)
+    ]
 )
 def append_data_to_table(n_clicks, catalog, schema, table, file_path):
     if not n_clicks or not all([catalog, schema, table, file_path]):
         return "", False, False, {"display": "none"}
     
-    loading_style = {
-        "position": "fixed",
-        "top": 0,
-        "left": 0,
-        "right": 0,
-        "bottom": 0,
-        "display": "flex",
-        "alignItems": "center",
-        "justifyContent": "center",
-        "backgroundColor": "rgba(0, 0, 0, 0.5)",
-        "zIndex": 1050
-    }
-    
     try:
-        # Show loading state
         rows_inserted = insert_data_to_table(
             catalog=catalog,
             schema=schema,
