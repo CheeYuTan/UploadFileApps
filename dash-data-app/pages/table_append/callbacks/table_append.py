@@ -6,7 +6,7 @@ from dbutils import insert_data_to_table
     [Output("append-status", "children"),
      Output("append-status", "is_open"),
      Output("confirm-append", "disabled"),
-     Output("loading-modal", "is_open")],
+     Output("loading-overlay", "style")],
     Input("confirm-append", "n_clicks"),
     [State("catalog-select", "value"),
      State("schema-select", "value"),
@@ -16,7 +16,20 @@ from dbutils import insert_data_to_table
 )
 def append_data_to_table(n_clicks, catalog, schema, table, file_path):
     if not n_clicks or not all([catalog, schema, table, file_path]):
-        return "", False, False, False
+        return "", False, False, {"display": "none"}
+    
+    loading_style = {
+        "position": "fixed",
+        "top": 0,
+        "left": 0,
+        "right": 0,
+        "bottom": 0,
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "center",
+        "backgroundColor": "rgba(0, 0, 0, 0.5)",
+        "zIndex": 1050
+    }
     
     try:
         # Show loading state
@@ -37,7 +50,7 @@ def append_data_to_table(n_clicks, catalog, schema, table, file_path):
             className="mt-3"
         )
         
-        return success_alert, True, False, False
+        return success_alert, True, False, {"display": "none"}
         
     except Exception as e:
         error_alert = dbc.Alert(
@@ -50,4 +63,4 @@ def append_data_to_table(n_clicks, catalog, schema, table, file_path):
             className="mt-3"
         )
         
-        return error_alert, True, False, False 
+        return error_alert, True, False, {"display": "none"} 

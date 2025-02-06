@@ -33,24 +33,22 @@ def get_layout():
         # Add loading spinner and status alert
         dbc.Row([
             dbc.Col([
-                # Loading spinner for append operation
-                dbc.Spinner(
-                    dbc.Modal([
-                        dbc.ModalBody([
-                            html.Div([
-                                html.H4("Uploading data...", className="mb-3"),
-                                html.P("Please wait while we append the data to your table.", className="text-muted"),
-                                html.Div(id="loading-append")
-                            ], className="text-center")
-                        ])
-                    ],
-                    id="loading-modal",
-                    is_open=False,
-                    centered=True,
-                    backdrop="static",  # Prevents closing by clicking outside
-                ),
-                    color="primary",
-                    type="border",
+                # Loading overlay with spinner
+                html.Div(
+                    dbc.Spinner(size="lg", color="primary"),
+                    id="loading-overlay",
+                    style={
+                        "position": "fixed",
+                        "top": 0,
+                        "left": 0,
+                        "right": 0,
+                        "bottom": 0,
+                        "display": "none",  # Initially hidden
+                        "alignItems": "center",
+                        "justifyContent": "center",
+                        "backgroundColor": "rgba(0, 0, 0, 0.5)",  # Semi-transparent background
+                        "zIndex": 1050  # Above other content
+                    }
                 ),
                 # Status alert for success/error messages
                 dbc.Collapse(
@@ -66,7 +64,7 @@ def get_layout():
             dbc.Col([
                 dbc.Button(
                     [
-                        html.I(className="bi bi-cloud-upload me-2"),  # Upload icon
+                        html.I(className="bi bi-cloud-upload me-2"),
                         "Confirm and Append Data"
                     ],
                     id="confirm-append",
